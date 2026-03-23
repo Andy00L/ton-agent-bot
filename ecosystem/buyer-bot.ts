@@ -140,6 +140,7 @@ async function main() {
 
     // Step 3: Get offers
     let bestOffer: any = null;
+    let priceInTon: string | null = null;
     try {
       log("BUYER", "OFFERS", `Checking offers on intent #${intentIndex}...`);
       const offers = (await agent.runAction("get_offers", {
@@ -160,7 +161,7 @@ async function main() {
         return price < parseFloat(best?.price || "999") ? o : best;
       }, list[0]);
 
-      const priceInTon = parseFloat(bestOffer.price) > 1000
+      priceInTon = parseFloat(bestOffer.price) > 1000
         ? (parseFloat(bestOffer.price) / 1e9).toString()
         : bestOffer.price;
 
@@ -171,6 +172,12 @@ async function main() {
       );
     } catch (err: any) {
       logError("BUYER", "OFFERS", err.message);
+      await sleep(ROUND_INTERVAL);
+      continue;
+    }
+
+    if (!priceInTon) {
+      logError("BUYER", "ESCROW", "priceInTon not set, skipping");
       await sleep(ROUND_INTERVAL);
       continue;
     }
