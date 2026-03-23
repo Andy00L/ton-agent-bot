@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
 import { NETWORK, getState } from "../config";
-import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr, verboseLog } from "../helpers";
 import { mainMenuKb, intentsMenuKb, browseIntentsKb, offerFormKb, settingsKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 import { startOfferTracking } from "../services/tracking";
@@ -12,6 +12,8 @@ import { startOfferTracking } from "../services/tracking";
 export function registerMainMenuHandlers(botCtx: BotContext) {
 
   botCtx.bot.callbackQuery("btn_main", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const hasW = botCtx.secretStore.hasWallet(uid);
@@ -29,6 +31,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_balance", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     if (!botCtx.secretStore.hasWallet(uid)) {
@@ -57,6 +61,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_refresh", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Refreshing...");
     await ctx.answerCallbackQuery("Refreshing...");
     const uid = ctx.from!.id;
     const hasW = botCtx.secretStore.hasWallet(uid);
@@ -74,6 +80,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_transfer", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.awaitingInput = "transfer";
@@ -85,6 +93,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_swap", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.awaitingInput = "swap";
@@ -96,6 +106,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_portfolio", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     try {
       const userAgent = await getUserAgent(botCtx, ctx.from!.id);
@@ -110,6 +122,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_help", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `<b>❓ TON Agent Kit</b> · ${botCtx.readOnlyAgent.getAvailableActions().length} actions\n\n` +
@@ -124,6 +138,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_wallet_info", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     if (!botCtx.secretStore.hasWallet(uid)) {
@@ -144,6 +160,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^btn_agents(?:_(\d+))?$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const userAgent = await getUserAgent(botCtx, ctx.from!.id);
     const page = parseInt(ctx.match![1] || "0");
@@ -183,6 +201,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_escrow", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const userAgent = await getUserAgent(botCtx, ctx.from!.id);
     let msg = `<b>🔒 Escrow</b>\n\n`;
@@ -206,6 +226,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_offers", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     if (state.pendingOffers.size === 0) {
@@ -225,6 +247,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   // ══════════════════════════════════════
 
   botCtx.bot.callbackQuery("btn_intents", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -250,6 +274,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_intents_refresh", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Refreshing...");
     // Same as btn_intents
     await ctx.answerCallbackQuery("Refreshing...");
     const uid = ctx.from!.id;
@@ -272,6 +298,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_browse", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     try {
       const userAgent = await getUserAgent(botCtx, ctx.from!.id);
@@ -290,6 +318,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^browse_page_(\d+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const userAgent = await getUserAgent(botCtx, ctx.from!.id);
     const page = parseInt(ctx.match![1]);
@@ -311,6 +341,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_new_intent", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.awaitingInput = "new_intent";
@@ -321,6 +353,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_my_offers", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     if (state.pendingOffers.size === 0) {
@@ -336,6 +370,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^view_intent_(\d+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const userAgent = await getUserAgent(botCtx, ctx.from!.id);
     const intentIdx = parseInt(ctx.match![1]);
@@ -367,6 +403,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   // ══════════════════════════════════════
 
   botCtx.bot.callbackQuery(/^offer_(\d+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -380,6 +418,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^price_(.+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     if (!state.offerDraft) return;
@@ -391,6 +431,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^time_(\d+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     if (!state.offerDraft) return;
@@ -402,6 +444,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_send_offer", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Sending offer...");
     await ctx.answerCallbackQuery("Sending offer...");
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -439,6 +483,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   // ══════════════════════════════════════
 
   botCtx.bot.callbackQuery(/^accept_offer_(\d+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Accepting offer...");
     await ctx.answerCallbackQuery("Accepting offer...");
     const uid = ctx.from!.id;
     if (!botCtx.secretStore.hasWallet(uid)) {
@@ -459,6 +505,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^cancel_intent_(\d+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Cancelling...");
     await ctx.answerCallbackQuery("Cancelling...");
     const uid = ctx.from!.id;
     if (!botCtx.secretStore.hasWallet(uid)) {

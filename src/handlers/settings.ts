@@ -2,7 +2,7 @@ import { InlineKeyboard } from "grammy";
 import { LLM_PROVIDERS } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
 import { NETWORK, getState } from "../config";
-import { formatTon, escapeHtml, friendlyAddr } from "../helpers";
+import { formatTon, escapeHtml, friendlyAddr, verboseLog } from "../helpers";
 import { settingsKb, mainMenuKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 import { startListening, stopListening } from "../services/listen";
@@ -13,6 +13,8 @@ import { startListening, stopListening } from "../services/listen";
 export function registerSettingsHandlers(botCtx: BotContext) {
 
   botCtx.bot.callbackQuery("btn_settings", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.currentMenu = "settings";
@@ -20,6 +22,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("toggle_confirm", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.confirmTrades = !state.confirmTrades;
@@ -30,10 +34,13 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("toggle_auto", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.autoMode = !state.autoMode;
     if (!state.autoMode) state.autoRunning = false;
+    verboseLog(`USER:${ctx.from?.id}`, "MODE_CHANGE", state.autoMode ? "→ auto" : "→ normal");
     await ctx.editMessageText(
       `<b>⚙️ Settings</b>\n\nAuto Mode: <b>${state.autoMode ? "ON" : "OFF"}</b>`,
       { parse_mode: "HTML", reply_markup: settingsKb(state) },
@@ -41,11 +48,14 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("toggle_listen", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
     state.listenMode = !state.listenMode;
     if (state.listenMode) startListening(botCtx, uid); else stopListening(uid);
+    verboseLog(`USER:${uid}`, "MODE_CHANGE", state.listenMode ? "→ listen" : "→ normal");
     await ctx.editMessageText(
       `<b>⚙️ Settings</b>\n\nListen Mode: <b>${state.listenMode ? "ON" : "OFF"}</b>`,
       { parse_mode: "HTML", reply_markup: settingsKb(state) },
@@ -53,6 +63,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("cycle_hitl", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     const vals = [0.05, 0.1, 0.5, 1.0];
@@ -62,6 +74,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("cycle_steps", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     const vals = [5, 10, 15, 20];
@@ -71,6 +85,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("cycle_poll", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -86,6 +102,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   // ══════════════════════════════════════
 
   botCtx.bot.callbackQuery("settings_wallet", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     if (botCtx.secretStore.hasWallet(uid)) {
@@ -110,6 +128,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("wallet_export", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `<b>⚠️ Export mnemonic?</b>\n\nYour 24-word mnemonic will be shown.\nThe message will be auto-deleted in 30 seconds.`,
@@ -118,6 +138,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("wallet_export_confirm", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const stored = botCtx.secretStore.loadWallet(uid);
@@ -144,6 +166,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("wallet_change", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `<b>🔄 Change Wallet</b>\n\nThis will replace your current wallet.\nMake sure you've backed up your mnemonic.`,
@@ -154,6 +178,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("wallet_disconnect", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `<b>⚠️ Disconnect wallet?</b>\n\nYou will lose access to your wallet unless you have the mnemonic backed up.`,
@@ -162,6 +188,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("wallet_disconnect_confirm", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     botCtx.secretStore.deleteWallet(uid);
@@ -179,6 +207,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   // ══════════════════════════════════════
 
   botCtx.bot.callbackQuery("settings_ai", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     if (botCtx.secretStore.hasApiKey(uid)) {
@@ -200,6 +230,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("ai_remove", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `<b>⚠️ Remove AI key?</b>\n\nYou won't be able to use chat or auto mode.`,
@@ -208,6 +240,8 @@ export function registerSettingsHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("ai_remove_confirm", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     botCtx.secretStore.deleteApiKey(uid);

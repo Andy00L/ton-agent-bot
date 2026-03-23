@@ -17,8 +17,19 @@ import TokenPlugin from "@ton-agent-kit/plugin-token";
 import PaymentsPlugin from "@ton-agent-kit/plugin-payments";
 import AgentCommPlugin from "@ton-agent-kit/plugin-agent-comm";
 
+import * as readline from "readline";
 import { BOT_TOKEN, MNEMONIC, NETWORK, RPC_URL, X402_PORT, userStates } from "./src/config";
-import { shortAddr, friendlyAddr } from "./src/helpers";
+import { shortAddr, friendlyAddr, setVerbose } from "./src/helpers";
+
+async function askVerbose(): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question("Verbose logs? [y/N]: ", (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase() === "y");
+    });
+  });
+}
 
 // Validate token early
 if (!BOT_TOKEN || BOT_TOKEN.length < 30) {
@@ -37,6 +48,10 @@ import { registerFilesHandlers } from "./src/handlers/files";
 import { registerMessageHandler } from "./src/handlers/message";
 
 async function main() {
+  const VERBOSE = await askVerbose();
+  setVerbose(VERBOSE);
+  console.log(`[LOGGER] Verbose logging: ${VERBOSE ? "ON" : "OFF"}`);
+
   // Step 1: Network mode
   const publicUrl = await selectNetworkMode(X402_PORT);
   console.log(`  Network: ${publicUrl}\n`);

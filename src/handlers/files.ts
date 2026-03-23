@@ -1,7 +1,7 @@
 import { InlineKeyboard, InputFile } from "grammy";
 import { MAX_USER_STORAGE } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
-import { escapeHtml, safeReply } from "../helpers";
+import { escapeHtml, safeReply, verboseLog } from "../helpers";
 import { mainMenuKb } from "../keyboards";
 
 // ── renderFilesList helper ──
@@ -53,11 +53,15 @@ async function renderFilesList(botCtx: BotContext, ctx: any, uid: number, page: 
 export function registerFilesHandlers(botCtx: BotContext) {
 
   botCtx.bot.callbackQuery(/^btn_files(?:_(\d+))?$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await renderFilesList(botCtx, ctx, ctx.from!.id, parseInt(ctx.match?.[1] || "0"));
   });
 
   botCtx.bot.callbackQuery(/^file_view_([a-f0-9]+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const fileId = ctx.match![1];
     const uid = ctx.from!.id;
@@ -74,14 +78,18 @@ export function registerFilesHandlers(botCtx: BotContext) {
     const chatId = ctx.chat!.id;
     try {
       if (file.contentType.startsWith("image/")) {
+        verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", `sendPhoto: ${file.filename}`);
         await botCtx.bot.api.sendPhoto(chatId, new InputFile(buffer, file.filename));
       } else if (file.contentType.startsWith("audio/")) {
+        verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", `sendAudio: ${file.filename}`);
         await botCtx.bot.api.sendAudio(chatId, new InputFile(buffer, file.filename));
       } else {
         const text = buffer.toString("utf8");
         if (text.length <= 4000) {
+          verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", `file text preview: ${file.filename}`);
           await ctx.reply(`<b>${escapeHtml(file.filename)}</b>\n\n<pre>${escapeHtml(text)}</pre>`, { parse_mode: "HTML" });
         } else {
+          verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", `sendDocument: ${file.filename}`);
           await botCtx.bot.api.sendDocument(chatId, new InputFile(buffer, file.filename));
         }
       }
@@ -91,26 +99,34 @@ export function registerFilesHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery(/^file_play_([a-f0-9]+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const file = botCtx.fileStore.getFile(ctx.match![1]);
     if (!file || file.uid !== uid) return;
     const buffer = botCtx.fileStore.getFileBuffer(ctx.match![1]);
     if (!buffer) return;
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", `sendAudio: ${file.filename}`);
     try { await botCtx.bot.api.sendAudio(ctx.chat!.id, new InputFile(buffer, file.filename)); } catch {}
   });
 
   botCtx.bot.callbackQuery(/^file_dl_([a-f0-9]+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const file = botCtx.fileStore.getFile(ctx.match![1]);
     if (!file || file.uid !== uid) return;
     const buffer = botCtx.fileStore.getFileBuffer(ctx.match![1]);
     if (!buffer) return;
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", `sendDocument: ${file.filename}`);
     try { await botCtx.bot.api.sendDocument(ctx.chat!.id, new InputFile(buffer, file.filename)); } catch {}
   });
 
   botCtx.bot.callbackQuery(/^file_del_([a-f0-9]+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Deleted");
     await ctx.answerCallbackQuery("Deleted");
     const uid = ctx.from!.id;
     const file = botCtx.fileStore.getFile(ctx.match![1]);
@@ -119,6 +135,8 @@ export function registerFilesHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("files_delete_all", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `<b>⚠️ Delete ALL your stored files?</b>`,
@@ -127,6 +145,8 @@ export function registerFilesHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("files_delete_all_confirm", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: All files deleted");
     await ctx.answerCallbackQuery("All files deleted");
     const uid = ctx.from!.id;
     const count = botCtx.fileStore.deleteAllFiles(uid);

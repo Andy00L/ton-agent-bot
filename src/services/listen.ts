@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
 import { getState, NETWORK } from "../config";
-import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr, verboseLog } from "../helpers";
 import { listenKb } from "../keyboards";
 import { getUserAgent } from "./agent";
 
@@ -35,6 +35,7 @@ export async function pollIntents(ctx: BotContext, uid: number) {
       const byService: Record<string, number> = {};
       for (const i of intents) { const svc = i.serviceName || i.service || "unknown"; byService[svc] = (byService[svc] || 0) + 1; }
       const topServices = Object.entries(byService).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([s, c]) => `${s} (${c})`).join(", ");
+      verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `listen mode update: ${newOnes.length} new intents`);
       await ctx.bot.api.sendMessage(uid,
         `<b>👂 Listen Mode</b> — update\n\n${intents.length} active intents\n<b>${newOnes.length} new</b> since last check\n\nTop: ${topServices}`,
         { parse_mode: "HTML", reply_markup: listenKb(newOnes.length) });
@@ -65,6 +66,7 @@ export async function pollMyOffers(ctx: BotContext, uid: number) {
         const kb = new InlineKeyboard();
         for (const o of newOffers.slice(0, 3)) kb.text(`Accept #${o.offerIndex}`, `accept_offer_${o.offerIndex}`).row();
         kb.text("View All", `view_intent_${intentIdx}`).text("« Back", "btn_main");
+        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `new offers notification for intent #${intentIdx}`);
         await ctx.bot.api.sendMessage(uid, msg, { parse_mode: "HTML", reply_markup: kb });
       }
     } catch {}

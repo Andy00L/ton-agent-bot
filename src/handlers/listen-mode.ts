@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
 import { getState, NETWORK } from "../config";
-import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr, verboseLog } from "../helpers";
 import { listenKb, browseIntentsKb, mainMenuKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 import { startListening, stopListening, pollIntents } from "../services/listen";
@@ -12,10 +12,13 @@ import { startListening, stopListening, pollIntents } from "../services/listen";
 export function registerListenHandlers(botCtx: BotContext) {
 
   botCtx.bot.callbackQuery("btn_listen", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
     if (!state.listenMode) { state.listenMode = true; startListening(botCtx, uid); }
+    verboseLog(`USER:${uid}`, "MODE_CHANGE", "→ listen");
     state.currentMenu = "listening";
     await ctx.editMessageText(
       `<b>👂 Listen Mode ACTIVE</b>\n\nPolling every ${state.pollInterval / 1000}s\nFilter: ${state.listenFilter || "all services"}\n\n${state.lastPollCount} intents tracked`,
@@ -24,12 +27,17 @@ export function registerListenHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_stop_listen", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Stopped");
     await ctx.answerCallbackQuery("Stopped");
+    verboseLog(`USER:${ctx.from?.id}`, "MODE_CHANGE", "→ normal");
     stopListening(ctx.from!.id);
     await ctx.editMessageText(`<b>👂 Listen Mode OFF</b>`, { parse_mode: "HTML", reply_markup: mainMenuKb() });
   });
 
   botCtx.bot.callbackQuery("btn_show_new", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     try {
       const userAgent = await getUserAgent(botCtx, ctx.from!.id);
@@ -47,6 +55,8 @@ export function registerListenHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_listen_random", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     try {
       const userAgent = await getUserAgent(botCtx, ctx.from!.id);
@@ -66,6 +76,8 @@ export function registerListenHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_listen_filter", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const state = getState(ctx.from!.id);
     state.awaitingInput = "listen_filter";
@@ -76,6 +88,8 @@ export function registerListenHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_clear_filter", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Filter cleared");
     await ctx.answerCallbackQuery("Filter cleared");
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -89,6 +103,8 @@ export function registerListenHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("btn_poll_now", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Polling...");
     await ctx.answerCallbackQuery("Polling...");
     await pollIntents(botCtx, ctx.from!.id);
   });

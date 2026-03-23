@@ -1,6 +1,7 @@
 import { InputFile } from "grammy";
 import type { BotContext } from "../context";
 import { MAX_FILE_SIZE } from "@ton-agent-kit/wallet-store";
+import { verboseLog } from "../helpers";
 
 // ── File handling for action results ──
 export async function handleActionResult(
@@ -20,17 +21,20 @@ export async function handleActionResult(
       if (ct.startsWith("image/")) {
         const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
         const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
+        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendPhoto: ${action}.${ext}`);
         try { await ctx.bot.api.sendPhoto(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved for 48h)` }); } catch {}
         return { summary: JSON.stringify({ type: "image", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
       }
       if (ct.startsWith("audio/")) {
         const ext = ct.includes("ogg") ? "ogg" : ct.includes("wav") ? "wav" : "mp3";
         const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
+        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAudio: ${action}.${ext}`);
         try { await ctx.bot.api.sendAudio(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved for 48h)` }); } catch {}
         return { summary: JSON.stringify({ type: "audio", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
       }
       const subtype = ct.split("/")[1] || "bin";
       const fileId = ctx.fileStore.save(uid, `${action}.${subtype}`, ct, buf, action);
+      verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendDocument: ${action}.${subtype}`);
       try { await ctx.bot.api.sendDocument(chatId, new InputFile(buf, `${action}.${subtype}`), { caption: `${action} (saved for 48h)` }); } catch {}
       return { summary: JSON.stringify({ type: "document", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
     } catch (err: any) {

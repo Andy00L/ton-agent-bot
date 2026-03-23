@@ -4,7 +4,7 @@ import { KeypairWallet } from "@ton-agent-kit/core";
 import { LLM_PROVIDERS } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
 import { NETWORK, AUTO_APPROVE_LIMIT, getState } from "../config";
-import { escapeHtml, safeReply, friendlyAddr } from "../helpers";
+import { escapeHtml, safeReply, friendlyAddr, verboseLog } from "../helpers";
 import { offerFormKb, listenKb } from "../keyboards";
 import { handleNormalMessage, handleAutoMode } from "../services/llm";
 import { startListening, stopListening } from "../services/listen";
@@ -18,6 +18,7 @@ export function registerMessageHandler(botCtx: BotContext) {
     const uid = ctx.from!.id;
     const state = getState(uid);
     const text = ctx.message.text;
+    verboseLog(`USER:${ctx.from?.id}`, "TEXT", ctx.message.text.slice(0, 80));
 
     // ── Mnemonic input (before lock check) ──
     if (state.awaitingMnemonic) {
@@ -111,6 +112,7 @@ export function registerMessageHandler(botCtx: BotContext) {
 
     // FIX #2: Lock per user to prevent chat history corruption
     if (botCtx.userLocks.get(uid)) {
+      verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "still working on last request");
       try { await ctx.reply("⏳ Still working on your last request..."); } catch {}
       return;
     }
@@ -118,11 +120,13 @@ export function registerMessageHandler(botCtx: BotContext) {
     // TX mode text commands (kept for backward compatibility)
     const l = text.toLowerCase().trim();
     if (/\b(tx\s*auto|auto\s*approve)\b/.test(l)) {
+      verboseLog(`USER:${uid}`, "MODE_CHANGE", "→ auto-approve");
       state.confirmTrades = false;
       await safeReply(ctx, `🔓 <b>Auto mode</b> — no approval buttons.`);
       return;
     }
     if (/\b(tx\s*confirm|approval\s*on)\b/.test(l)) {
+      verboseLog(`USER:${uid}`, "MODE_CHANGE", "→ confirm");
       state.confirmTrades = true;
       await safeReply(ctx, `🔒 <b>Confirm mode</b> — approval above ${AUTO_APPROVE_LIMIT} TON.`);
       return;

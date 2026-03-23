@@ -14,7 +14,10 @@
       "Bash(done)",
       "Bash(cat:*)",
       "Bash(pwd:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit 2>&1 | head -40)",
+      "Bash(ls:*)"
     ]
   }
 }

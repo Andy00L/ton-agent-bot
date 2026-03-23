@@ -5,7 +5,7 @@ import { KeypairWallet } from "@ton-agent-kit/core";
 import { LLM_PROVIDERS } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
 import { NETWORK, getState } from "../config";
-import { formatTon, escapeHtml, friendlyAddr } from "../helpers";
+import { formatTon, escapeHtml, friendlyAddr, verboseLog } from "../helpers";
 import { mainMenuKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 
@@ -30,6 +30,7 @@ async function showOnboarding(botCtx: BotContext, ctx: any, uid: number, edit = 
   if (edit) {
     await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: kb });
   } else {
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "showOnboarding");
     await ctx.reply(msg, { parse_mode: "HTML", reply_markup: kb });
   }
 }
@@ -52,6 +53,7 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
       const walletAddr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
       let bal = "?";
       try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
+      verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "start command: returning user main menu");
       const sent = await ctx.reply(
         `<b>🤖 TON Agent Kit</b>\n\n` +
         `<code>${escapeHtml(walletAddr)}</code> <i>(tap to copy)</i>\n` +
@@ -72,6 +74,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   // ══════════════════════════════════════
 
   botCtx.bot.callbackQuery("setup_wallet_generate", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     try {
@@ -108,6 +112,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("setup_wallet_saved", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     try { await ctx.deleteMessage(); } catch {}
@@ -115,6 +121,7 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
     const kb = new InlineKeyboard();
     if (!botCtx.secretStore.hasApiKey(uid)) kb.text("🧠 Set up AI key", "setup_ai_provider").row();
     kb.text("🏠 Main menu", "btn_main");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "wallet saved confirmation");
     await ctx.reply(
       `<b>✅ Wallet saved!</b>\n\n📍 <code>${escapeHtml(friendlyAddr(addr || "?", NETWORK === "testnet"))}</code>\n🌐 ${NETWORK}\n\n<i>Send ${NETWORK === "testnet" ? "testnet" : ""} TON to this address to start.</i>`,
       { parse_mode: "HTML", reply_markup: kb },
@@ -122,6 +129,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("setup_wallet_import", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -133,6 +142,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("setup_ai_provider", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const kb = new InlineKeyboard();
     for (const [key, p] of Object.entries(LLM_PROVIDERS)) {
@@ -147,6 +158,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
 
   for (const [providerKey, provider] of Object.entries(LLM_PROVIDERS)) {
     botCtx.bot.callbackQuery(`setup_ai_key_${providerKey}`, async (ctx) => {
+      verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+      verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
       await ctx.answerCallbackQuery();
       const uid = ctx.from!.id;
       const state = getState(uid);
@@ -162,6 +175,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   }
 
   botCtx.bot.callbackQuery(/^setup_ai_model_([a-z]+)_(.+)$/, async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Validating...");
     await ctx.answerCallbackQuery("Validating...");
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -205,6 +220,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("setup_skip", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);
@@ -220,6 +237,8 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
   });
 
   botCtx.bot.callbackQuery("setup_back", async (ctx) => {
+    verboseLog(`USER:${ctx.from?.id}`, `BUTTON:${ctx.callbackQuery.data}`, "");
+    verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery");
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     const state = getState(uid);

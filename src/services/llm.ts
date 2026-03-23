@@ -4,7 +4,7 @@ import { Address } from "@ton/core";
 import type { BotContext } from "../context";
 import type { UserState } from "../config";
 import { getState, READ_ONLY_ACTIONS, NETWORK, needsApproval } from "../config";
-import { escapeHtml, safeReply, friendlyAddr } from "../helpers";
+import { escapeHtml, safeReply, friendlyAddr, verboseLog } from "../helpers";
 import { mainMenuKb } from "../keyboards";
 import { getUserAgent, getUserOpenAI, makeSystemPrompt } from "./agent";
 import { requestApproval } from "./approval";
@@ -38,6 +38,7 @@ export async function executeLLMLoop(
     for (const tc of am.tool_calls) {
       const fn = tc.function.name;
       const fp = JSON.parse(tc.function.arguments);
+      verboseLog(`LLM:${uid}`, "TOOL_CALL", `${fn} ${JSON.stringify(fp).slice(0, 120)}`);
       if (onStep) try { await onStep(iter, fn); } catch {}
 
       // Wallet check for write actions
@@ -66,6 +67,7 @@ export async function executeLLMLoop(
           result = stored.summary;
           // pay_for_resource receipt
           if (fn === "pay_for_resource" && stored.fileId) {
+            verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `pay_for_resource receipt for ${fp.url || "service"}`);
             try { await ctx.bot.api.sendMessage(chatId, `<b>Paid</b> for ${escapeHtml(fp.url || "service")}\nFile saved (48h): ${stored.fileId}\nView in Files`, { parse_mode: "HTML" }); } catch {}
           }
           // Track intents
@@ -94,6 +96,7 @@ export async function executeLLMLoop(
       } else {
         result = JSON.stringify({ status: "rejected", reason: "User rejected" });
       }
+      verboseLog(`LLM:${uid}`, "TOOL_RESULT", `${fn} → ${result.slice(0, 120)}`);
       history.push({ role: "tool", tool_call_id: tc.id, content: result });
     }
     await ctx.bot.api.sendChatAction(chatId, "typing");
@@ -156,6 +159,7 @@ export async function handleAutoMode(ctx: BotContext, gramCtx: any, state: UserS
   state.autoRunning = true;
   state.autoGoal = goal;
   const chatId = gramCtx.chat!.id;
+  verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `auto mode mission started: ${goal.slice(0, 80)}`);
   const statusMsg = await gramCtx.reply(
     `<b>🤖 Mission started</b>\n\nGoal: <i>${escapeHtml(goal.slice(0, 200))}</i>\n\n<i>Working...</i>`,
     { parse_mode: "HTML" },

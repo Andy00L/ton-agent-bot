@@ -1,6 +1,6 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
-import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr, verboseLog } from "../helpers";
 
 export async function requestApproval(ctx: BotContext, chatId: number, action: string, params: any): Promise<boolean> {
   const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -15,6 +15,7 @@ export async function requestApproval(ctx: BotContext, chatId: number, action: s
   else if (action === "vote_release" || action === "vote_refund") msg += `⚖️ <b>${action === "vote_release" ? "Vote Release 💚" : "Vote Refund 🔴"}</b>\n└ 🔒 <code>${escapeHtml(params.escrowId || "?")}</code>`;
   else if (action === "confirm_delivery") msg += `📦 <b>Confirm Delivery</b>\n└ 🔒 <code>${escapeHtml(params.escrowId || "?")}</code>`;
   else msg += `⚡ <b>${escapeHtml(action)}</b>\n<code>${escapeHtml(JSON.stringify(params).slice(0, 200))}</code>`;
+  verboseLog(`BOT:${chatId}`, "DIRECT_REPLY", `approval request for ${action}`);
   await ctx.bot.api.sendMessage(chatId, msg, { parse_mode: "HTML", reply_markup: kb });
   return new Promise((resolve) => {
     ctx.pendingApprovals.set(id, { chatId, action, params, resolve });
