@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun build:*)",
+      "Bash(mkdir:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(find src:*)",
+      "Bash(echo:*)",
+      "Bash(git stash:*)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/0ther/CODE/personal/ai_hackathon/ton-agent-bot/**)",
+      "Bash(done)"
+    ]
+  }
+}
