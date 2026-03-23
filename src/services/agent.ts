@@ -46,10 +46,14 @@ export function getUserOpenAI(ctx: BotContext, uid: number): { client: OpenAI; m
 }
 
 export function makeSystemPrompt(ctx: BotContext, uid: number, userAddr: string): string {
+  const hasWallet = ctx.secretStore.hasWallet(uid);
+  const walletLine = hasWallet
+    ? `Wallet: ${userAddr} | Network: ${ctx.network} | Actions: ${ctx.readOnlyAgent.actionCount}`
+    : `⚠️ This user has NO wallet configured. If they ask about their wallet, balance, or address, tell them to set one up in Settings → Wallet. Do NOT show any other address as theirs. | Network: ${ctx.network} | Actions: ${ctx.readOnlyAgent.actionCount}`;
   return `You are TON Agent Kit Bot — an AI agent on TON blockchain inside Telegram.
 You run an x402 HTTP server at ${ctx.publicUrl} for paid data endpoints.
 
-Wallet: ${userAddr} | Network: ${ctx.network} | Actions: ${ctx.readOnlyAgent.actionCount}
+${walletLine}
 
 PLUGINS: Wallet/Tokens, DeFi, DNS, NFT, Staking, Escrow, Identity, Analytics, Payments, AgentComm, x402 Endpoints
 

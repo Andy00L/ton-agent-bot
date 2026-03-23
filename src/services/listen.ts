@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
-import { getState } from "../config";
-import { formatTon, shortAddr, escapeHtml } from "../helpers";
+import { getState, NETWORK } from "../config";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
 import { listenKb } from "../keyboards";
 import { getUserAgent } from "./agent";
 
@@ -60,7 +60,7 @@ export async function pollMyOffers(ctx: BotContext, uid: number) {
         let msg = `<b>📨 New offers on #${intentIdx} (${escapeHtml(info.service)})</b>\n\n`;
         for (const o of newOffers) {
           msg += `Offer #${o.offerIndex}: <b>${o.price ? formatTon(o.price) : "?"} TON</b>, ${o.deliveryTime || "?"} min\n`;
-          msg += `Seller: <code>${shortAddr(o.seller || "")}</code>\n\n`;
+          msg += `Seller: <code>${escapeHtml(friendlyAddr(o.seller || "", NETWORK === "testnet"))}</code>\n\n`;
         }
         const kb = new InlineKeyboard();
         for (const o of newOffers.slice(0, 3)) kb.text(`Accept #${o.offerIndex}`, `accept_offer_${o.offerIndex}`).row();

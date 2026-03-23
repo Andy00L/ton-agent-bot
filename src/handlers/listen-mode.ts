@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
-import { getState } from "../config";
-import { formatTon, shortAddr, escapeHtml } from "../helpers";
+import { getState, NETWORK } from "../config";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
 import { listenKb, browseIntentsKb, mainMenuKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 import { startListening, stopListening, pollIntents } from "../services/listen";
@@ -38,7 +38,7 @@ export function registerListenHandlers(botCtx: BotContext) {
       let msg = `<b>📬 Recent Intents</b>\n\n`;
       for (const i of list) {
         const svc = i.serviceName || i.service || "?";
-        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(shortAddr(i.buyer || ""))}</code>\n\n`;
+        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(friendlyAddr(i.buyer || "", NETWORK === "testnet"))}</code>\n\n`;
       }
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: browseIntentsKb(list, 0) });
     } catch (err: any) {
@@ -57,7 +57,7 @@ export function registerListenHandlers(botCtx: BotContext) {
       let msg = `<b>🎲 Random Intents</b>\n\n`;
       for (const i of shuffled) {
         const svc = i.serviceName || i.service || "?";
-        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(shortAddr(i.buyer || ""))}</code>\n\n`;
+        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(friendlyAddr(i.buyer || "", NETWORK === "testnet"))}</code>\n\n`;
       }
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: browseIntentsKb(shuffled, 0) });
     } catch (err: any) {

@@ -1,9 +1,10 @@
 import OpenAI from "openai";
 import { InlineKeyboard } from "grammy";
+import { Address } from "@ton/core";
 import type { BotContext } from "../context";
 import type { UserState } from "../config";
-import { getState, READ_ONLY_ACTIONS, needsApproval } from "../config";
-import { escapeHtml, safeReply } from "../helpers";
+import { getState, READ_ONLY_ACTIONS, NETWORK, needsApproval } from "../config";
+import { escapeHtml, safeReply, friendlyAddr } from "../helpers";
 import { mainMenuKb } from "../keyboards";
 import { getUserAgent, getUserOpenAI, makeSystemPrompt } from "./agent";
 import { requestApproval } from "./approval";
@@ -53,6 +54,12 @@ export async function executeLLMLoop(
       let result: string;
       if (approved) {
         try {
+          // Normalize address params (friendly → raw) for SDK compatibility
+          for (const addrKey of ["to", "address", "recipient", "beneficiary", "seller", "escrowAddress"]) {
+            if (fp[addrKey] && typeof fp[addrKey] === "string") {
+              try { fp[addrKey] = Address.parse(fp[addrKey]).toRawString(); } catch {}
+            }
+          }
           await ctx.bot.api.sendChatAction(chatId, "typing");
           const ar = await userAgent.runAction(fn, fp);
           const stored = await handleActionResult(ctx, uid, chatId, fn, ar);
@@ -74,9 +81,14 @@ export async function executeLLMLoop(
             try {
               const tx = (await userAgent.runAction("get_transaction_history", { limit: 1 })) as any;
               const h = tx?.events?.[0]?.id;
-              const userAddr = ctx.secretStore.getWalletAddress(uid) || ctx.devFriendlyAddr;
-              result = JSON.stringify({ ...ar, explorerUrl: h ? `${ctx.viewerBase}/transaction/${h}` : `${ctx.viewerBase}/${userAddr}`, confirmed: !!h });
-            } catch { result = JSON.stringify({ ...ar, explorerUrl: `${ctx.viewerBase}/${ctx.secretStore.getWalletAddress(uid) || ctx.devFriendlyAddr}` }); }
+              const txAddr = ctx.secretStore.getWalletAddress(uid);
+              const txFriendly = txAddr ? friendlyAddr(txAddr, NETWORK === "testnet") : ctx.devFriendlyAddr;
+              result = JSON.stringify({ ...ar, explorerUrl: h ? `${ctx.viewerBase}/transaction/${h}` : `${ctx.viewerBase}/${txFriendly}`, confirmed: !!h });
+            } catch {
+              const fallbackAddr = ctx.secretStore.getWalletAddress(uid);
+              const fallbackFriendly = fallbackAddr ? friendlyAddr(fallbackAddr, NETWORK === "testnet") : ctx.devFriendlyAddr;
+              result = JSON.stringify({ ...ar, explorerUrl: `${ctx.viewerBase}/${fallbackFriendly}` });
+            }
           }
         } catch (err: any) { result = JSON.stringify({ error: err.message }); }
       } else {
@@ -112,7 +124,8 @@ export async function handleNormalMessage(ctx: BotContext, gramCtx: any, text: s
     return;
   }
   ctx.userLocks.set(uid, true);
-  const userAddr = ctx.secretStore.getWalletAddress(uid) || ctx.devFriendlyAddr;
+  const rawAddr = ctx.secretStore.getWalletAddress(uid);
+  const userAddr = rawAddr ? friendlyAddr(rawAddr, NETWORK === "testnet") : ctx.devFriendlyAddr;
   const sysPrompt = makeSystemPrompt(ctx, uid, userAddr);
   if (!ctx.chatHistories.has(chatId)) ctx.chatHistories.set(chatId, [{ role: "system", content: sysPrompt }]);
   const history = ctx.chatHistories.get(chatId)!;
@@ -148,7 +161,8 @@ export async function handleAutoMode(ctx: BotContext, gramCtx: any, state: UserS
     { parse_mode: "HTML" },
   );
   try {
-    const userAddr = ctx.secretStore.getWalletAddress(uid) || ctx.devFriendlyAddr;
+    const rawAddr = ctx.secretStore.getWalletAddress(uid);
+    const userAddr = rawAddr ? friendlyAddr(rawAddr, NETWORK === "testnet") : ctx.devFriendlyAddr;
     const sysPrompt = makeSystemPrompt(ctx, uid, userAddr);
     const missionHistory: OpenAI.ChatCompletionMessageParam[] = [
       { role: "system", content: sysPrompt + "\n\nMISSION MODE: Execute the following mission autonomously. Be decisive. Report results concisely." },

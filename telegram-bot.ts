@@ -18,7 +18,13 @@ import PaymentsPlugin from "@ton-agent-kit/plugin-payments";
 import AgentCommPlugin from "@ton-agent-kit/plugin-agent-comm";
 
 import { BOT_TOKEN, MNEMONIC, NETWORK, RPC_URL, X402_PORT, userStates } from "./src/config";
-import { shortAddr } from "./src/helpers";
+import { shortAddr, friendlyAddr } from "./src/helpers";
+
+// Validate token early
+if (!BOT_TOKEN || BOT_TOKEN.length < 30) {
+  console.error("❌ Invalid TELEGRAM_BOT_TOKEN. Get one from @BotFather.");
+  process.exit(1);
+}
 import type { BotContext } from "./src/context";
 import { setupX402Server } from "./src/services/x402";
 import { registerHitlHandlers } from "./src/handlers/hitl";
@@ -114,8 +120,18 @@ async function main() {
   registerMessageHandler(botCtx);  // MUST be last (catches all text)
 
   // Bot setup
-  bot.catch((err: any) => console.error("Bot error:", err.message?.slice(0, 100)));
-  await bot.api.setMyCommands([{ command: "start", description: "Open main menu" }]);
+  bot.catch((err: any) => {
+    const msg = err?.message || err?.description || "";
+    if (msg.includes("message is not modified")) return;
+    if (msg.includes("message to edit not found")) return;
+    if (msg.includes("query is too old")) return;
+    console.error("Bot error:", msg.slice(0, 100));
+  });
+  try {
+    await bot.api.setMyCommands([{ command: "start", description: "Open main menu" }]);
+  } catch (err: any) {
+    console.error("⚠️ Failed to set commands:", err.message?.slice(0, 100));
+  }
 
   const { run } = await import("@grammyjs/runner");
   const runner = run(bot);
@@ -149,5 +165,12 @@ async function main() {
   process.on("SIGINT", cleanup);
   process.on("SIGTERM", cleanup);
 }
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught:", err.message?.slice(0, 200));
+});
+process.on("unhandledRejection", (err: any) => {
+  console.error("Unhandled:", err?.message?.slice(0, 200));
+});
 
 main().catch(console.error);

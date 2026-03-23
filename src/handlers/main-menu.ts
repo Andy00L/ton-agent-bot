@@ -1,7 +1,7 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
 import { NETWORK, getState } from "../config";
-import { formatTon, shortAddr, escapeHtml } from "../helpers";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
 import { mainMenuKb, intentsMenuKb, browseIntentsKb, offerFormKb, settingsKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 import { startOfferTracking } from "../services/tracking";
@@ -19,7 +19,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
     let walletAddr = "No wallet";
     if (hasW) {
       const userAgent = await getUserAgent(botCtx, uid);
-      walletAddr = botCtx.secretStore.getWalletAddress(uid)!;
+      walletAddr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
       try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
     }
     await ctx.editMessageText(
@@ -39,7 +39,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       return;
     }
     const userAgent = await getUserAgent(botCtx, uid);
-    const walletAddr = botCtx.secretStore.getWalletAddress(uid)!;
+    const walletAddr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
     let bal = "?";
     try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
     let priceInfo = "";
@@ -64,7 +64,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
     let walletAddr = "No wallet";
     if (hasW) {
       const userAgent = await getUserAgent(botCtx, uid);
-      walletAddr = botCtx.secretStore.getWalletAddress(uid)!;
+      walletAddr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
       try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
     }
     await ctx.editMessageText(
@@ -134,7 +134,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       return;
     }
     const userAgent = await getUserAgent(botCtx, uid);
-    const walletAddr = botCtx.secretStore.getWalletAddress(uid)!;
+    const walletAddr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
     let bal = "?";
     try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
     await ctx.editMessageText(
@@ -165,7 +165,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
           const status = a.available ? "🟢" : "🔴";
           msg += `${status} <b>${escapeHtml(a.name || `Agent #${a.index}`)}</b>\n`;
           msg += `├ Score: ${score}/100 | Tasks: ${a.reputation?.totalTasks || 0}\n`;
-          msg += `└ <code>${shortAddr(a.address || "")}</code>\n\n`;
+          msg += `└ <code>${escapeHtml(friendlyAddr(a.address || "", NETWORK === "testnet"))}</code>\n\n`;
         }
       }
       const kb = new InlineKeyboard();
@@ -197,7 +197,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       const d = (await userAgent.runAction("get_open_disputes", { limit: 5 })) as any;
       if (d?.disputes?.length) {
         msg += `━━━ <b>⚖️ Disputes</b> ━━━\n`;
-        for (const x of d.disputes.slice(0, 5)) msg += `⚖️ <code>${shortAddr(x.escrowAddress || "")}</code> · <b>${x.amount ? formatTon(x.amount) : "?"} TON</b>\n`;
+        for (const x of d.disputes.slice(0, 5)) msg += `⚖️ <code>${escapeHtml(friendlyAddr(x.escrowAddress || "", NETWORK === "testnet"))}</code> · <b>${x.amount ? formatTon(x.amount) : "?"} TON</b>\n`;
         has = true;
       }
     } catch {}
@@ -280,7 +280,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       let msg = `<b>🔍 Open Intents</b> (${intents?.total || list.length} active)\n\n`;
       for (const i of list.slice(0, 5)) {
         const svc = i.serviceName || i.service || i.serviceHash?.slice(0, 12) || "?";
-        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(shortAddr(i.buyer || ""))}</code>\n\n`;
+        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(friendlyAddr(i.buyer || "", NETWORK === "testnet"))}</code>\n\n`;
       }
       if (list.length === 0) msg += `<i>No open intents right now.</i>`;
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: browseIntentsKb(list, 0) });
@@ -301,7 +301,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       let msg = `<b>🔍 Open Intents</b> (page ${page + 1})\n\n`;
       for (const i of pageItems) {
         const svc = i.serviceName || i.service || "?";
-        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(shortAddr(i.buyer || ""))}</code>\n\n`;
+        msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(friendlyAddr(i.buyer || "", NETWORK === "testnet"))}</code>\n\n`;
       }
       if (pageItems.length === 0) msg += `<i>No more intents.</i>`;
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: browseIntentsKb(pageItems, page) });
@@ -347,11 +347,11 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       let msg = `<b>📡 Intent #${intentIdx}</b>\n\n`;
       if (intent) {
         const svc = intent.serviceName || intent.service || "?";
-        msg += `🏷️ Service: <b>${escapeHtml(svc)}</b>\n💰 Budget: <b>${intent.budget ? formatTon(intent.budget) : "?"} TON</b>\n👤 Buyer: <code>${escapeHtml(shortAddr(intent.buyer || ""))}</code>\n\n`;
+        msg += `🏷️ Service: <b>${escapeHtml(svc)}</b>\n💰 Budget: <b>${intent.budget ? formatTon(intent.budget) : "?"} TON</b>\n👤 Buyer: <code>${escapeHtml(friendlyAddr(intent.buyer || "", NETWORK === "testnet"))}</code>\n\n`;
       }
       msg += `<b>Offers (${offerList.length}):</b>\n\n`;
       for (const o of offerList.slice(0, 5)) {
-        msg += `#${o.offerIndex}: <b>${o.price ? formatTon(o.price) : "?"} TON</b>, ${o.deliveryTime || "?"} min\n└ <code>${shortAddr(o.seller || "")}</code>\n\n`;
+        msg += `#${o.offerIndex}: <b>${o.price ? formatTon(o.price) : "?"} TON</b>, ${o.deliveryTime || "?"} min\n└ <code>${escapeHtml(friendlyAddr(o.seller || "", NETWORK === "testnet"))}</code>\n\n`;
       }
       const kb = new InlineKeyboard();
       for (const o of offerList.slice(0, 3)) kb.text(`Accept #${o.offerIndex}`, `accept_offer_${o.offerIndex}`).row();

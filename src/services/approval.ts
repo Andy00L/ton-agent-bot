@@ -1,13 +1,13 @@
 import { InlineKeyboard } from "grammy";
 import type { BotContext } from "../context";
-import { formatTon, shortAddr, escapeHtml } from "../helpers";
+import { formatTon, shortAddr, escapeHtml, friendlyAddr } from "../helpers";
 
 export async function requestApproval(ctx: BotContext, chatId: number, action: string, params: any): Promise<boolean> {
   const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const kb = new InlineKeyboard().text("✅ Approve", `approve_${id}`).text("❌ Reject", `reject_${id}`);
   let msg = `🔔 <b>Approval required</b>\n\n`;
-  if (action === "transfer_ton") msg += `📤 <b>Transfer</b>\n├ 💰 <b>${formatTon(params.amount)} TON</b>\n└ 📍 <code>${escapeHtml(shortAddr(params.to || ""))}</code>`;
-  else if (action === "create_escrow") msg += `🔒 <b>Create Escrow</b>\n├ 💰 <b>${formatTon(params.amount)} TON</b>\n└ 👤 <code>${escapeHtml(shortAddr(params.beneficiary || ""))}</code>`;
+  if (action === "transfer_ton") msg += `📤 <b>Transfer</b>\n├ 💰 <b>${formatTon(params.amount)} TON</b>\n└ 📍 <code>${escapeHtml(friendlyAddr(params.to || "", ctx.network === "testnet"))}</code>`;
+  else if (action === "create_escrow") msg += `🔒 <b>Create Escrow</b>\n├ 💰 <b>${formatTon(params.amount)} TON</b>\n└ 👤 <code>${escapeHtml(friendlyAddr(params.beneficiary || "", ctx.network === "testnet"))}</code>`;
   else if (action.startsWith("swap_")) msg += `🔄 <b>Swap</b>\n├ ${escapeHtml(params.fromToken || "TON")} → ${escapeHtml(params.toToken || "?")}\n└ 💰 ${escapeHtml(params.amount || "?")}`;
   else if (action === "broadcast_intent") msg += `📡 <b>Broadcast Intent</b>\n├ 🏷️ ${escapeHtml(params.service || "?")}\n└ 💰 ${escapeHtml(params.budget || "?")} TON`;
   else if (action === "send_offer") msg += `📨 <b>Send Offer</b>\n├ 📡 Intent #${params.intentIndex || "?"}\n├ 💰 ${escapeHtml(params.price || "?")} TON\n└ ⏱️ ${params.deliveryTime || "?"} min`;

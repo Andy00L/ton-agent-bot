@@ -1,6 +1,11 @@
 import { readFileSync } from "fs";
 
-const envContent = readFileSync(".env", "utf-8");
+let envContent = "";
+try {
+  envContent = readFileSync(".env", "utf-8");
+} catch {
+  // No .env file — rely on process.env
+}
 export const getEnv = (key: string) =>
   envContent
     .split("\n")
@@ -8,13 +13,11 @@ export const getEnv = (key: string) =>
     ?.slice(key.length + 1)
     .trim() || "";
 
-process.env.TON_MNEMONIC = getEnv("TON_MNEMONIC");
-process.env.TELEGRAM_BOT_TOKEN = getEnv("TELEGRAM_BOT_TOKEN");
-process.env.OPENAI_API_KEY = getEnv("OPENAI_API_KEY");
-process.env.OPENAI_BASE_URL = getEnv("OPENAI_BASE_URL");
-process.env.AI_MODEL = getEnv("AI_MODEL");
-process.env.TON_NETWORK = getEnv("TON_NETWORK");
-process.env.TON_RPC_URL = getEnv("TON_RPC_URL");
+// Only override process.env when .env has a value (preserves Docker/CI env vars)
+for (const k of ["TON_MNEMONIC", "TELEGRAM_BOT_TOKEN", "OPENAI_API_KEY", "OPENAI_BASE_URL", "AI_MODEL", "TON_NETWORK", "TON_RPC_URL"]) {
+  const v = getEnv(k);
+  if (v) process.env[k] = v;
+}
 
 export const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 export const MNEMONIC = process.env.TON_MNEMONIC || "";

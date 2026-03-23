@@ -4,7 +4,7 @@ import { KeypairWallet } from "@ton-agent-kit/core";
 import { LLM_PROVIDERS } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
 import { NETWORK, AUTO_APPROVE_LIMIT, getState } from "../config";
-import { escapeHtml, safeReply } from "../helpers";
+import { escapeHtml, safeReply, friendlyAddr } from "../helpers";
 import { offerFormKb, listenKb } from "../keyboards";
 import { handleNormalMessage, handleAutoMode } from "../services/llm";
 import { startListening, stopListening } from "../services/listen";
@@ -41,7 +41,7 @@ export function registerMessageHandler(botCtx: BotContext) {
         const kb = new InlineKeyboard();
         if (!botCtx.secretStore.hasApiKey(uid)) kb.text("🧠 Set up AI key", "setup_ai_provider").row();
         kb.text("🏠 Main menu", "btn_main");
-        await safeReply(ctx, `<b>✅ Wallet imported!</b>\n\n📍 <code>${escapeHtml(addr)}</code>\n🌐 ${NETWORK}`, { reply_markup: kb });
+        await safeReply(ctx, `<b>✅ Wallet imported!</b>\n\n📍 <code>${escapeHtml(friendlyAddr(addr, NETWORK === "testnet"))}</code>\n🌐 ${NETWORK}`, { reply_markup: kb });
       } catch (err: any) {
         await safeReply(ctx, `⚠️ Invalid mnemonic: ${escapeHtml(err.message.slice(0, 200))}`, {
           reply_markup: new InlineKeyboard().text("📥 Try again", "setup_wallet_import").text("« Back", "setup_back"),

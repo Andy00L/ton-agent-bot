@@ -5,7 +5,7 @@ import { KeypairWallet } from "@ton-agent-kit/core";
 import { LLM_PROVIDERS } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
 import { NETWORK, getState } from "../config";
-import { formatTon, escapeHtml } from "../helpers";
+import { formatTon, escapeHtml, friendlyAddr } from "../helpers";
 import { mainMenuKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 
@@ -49,7 +49,7 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
       state.walletReady = true;
       state.aiReady = true;
       const userAgent = await getUserAgent(botCtx, uid);
-      const walletAddr = botCtx.secretStore.getWalletAddress(uid)!;
+      const walletAddr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
       let bal = "?";
       try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
       const sent = await ctx.reply(
@@ -82,18 +82,26 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
       getState(uid).walletReady = true;
       botCtx.userAgents.delete(uid);
 
-      // Format 24 words in 4 lines of 6
-      const lines: string[] = [];
-      for (let i = 0; i < 24; i += 6) {
-        lines.push(words.slice(i, i + 6).map((w, j) => `${i + j + 1}. ${w}`).join("  "));
+      // Format 24 words in 8 rows of 3 with monospace alignment
+      let grid = "";
+      for (let i = 0; i < 24; i += 3) {
+        const row = words.slice(i, i + 3).map((w, j) => {
+          const num = String(i + j + 1).padStart(2, " ");
+          return `${num}. ${w.padEnd(10)}`;
+        }).join("");
+        grid += (grid ? "\n" : "") + row;
       }
-      await ctx.editMessageText(
+      const mnemonicMsg = await ctx.editMessageText(
         `<b>🔑 Your wallet is ready!</b>\n\n` +
         `<b>Save these 24 words securely:</b>\n\n` +
-        `<code>${escapeHtml(lines.join("\n"))}</code>\n\n` +
-        `⚠️ <b>This is the ONLY time you'll see them.</b>\nAnyone with these words can access your funds.`,
+        `<pre>${escapeHtml(grid)}</pre>\n\n` +
+        `⚠️ <b>This is the ONLY time you'll see them.</b>\nAnyone with these words can access your funds.\n\n` +
+        `<i>Auto-deletes in 30 seconds.</i>`,
         { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("✅ I saved them", "setup_wallet_saved") },
       );
+      setTimeout(async () => {
+        try { await botCtx.bot.api.deleteMessage(ctx.chat!.id, mnemonicMsg.message_id); } catch {}
+      }, 30000);
     } catch (err: any) {
       await ctx.editMessageText(`⚠️ Failed to generate wallet: ${escapeHtml(err.message.slice(0, 200))}`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("Try again", "setup_wallet_generate").text("« Back", "setup_back") });
     }
@@ -108,7 +116,7 @@ export function registerOnboardingHandlers(botCtx: BotContext) {
     if (!botCtx.secretStore.hasApiKey(uid)) kb.text("🧠 Set up AI key", "setup_ai_provider").row();
     kb.text("🏠 Main menu", "btn_main");
     await ctx.reply(
-      `<b>✅ Wallet saved!</b>\n\n📍 <code>${escapeHtml(addr || "?")}</code>\n🌐 ${NETWORK}\n\n<i>Send ${NETWORK === "testnet" ? "testnet" : ""} TON to this address to start.</i>`,
+      `<b>✅ Wallet saved!</b>\n\n📍 <code>${escapeHtml(friendlyAddr(addr || "?", NETWORK === "testnet"))}</code>\n🌐 ${NETWORK}\n\n<i>Send ${NETWORK === "testnet" ? "testnet" : ""} TON to this address to start.</i>`,
       { parse_mode: "HTML", reply_markup: kb },
     );
   });

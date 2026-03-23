@@ -2,7 +2,7 @@ import { InlineKeyboard } from "grammy";
 import { LLM_PROVIDERS } from "@ton-agent-kit/wallet-store";
 import type { BotContext } from "../context";
 import { NETWORK, getState } from "../config";
-import { formatTon, escapeHtml } from "../helpers";
+import { formatTon, escapeHtml, friendlyAddr } from "../helpers";
 import { settingsKb, mainMenuKb } from "../keyboards";
 import { getUserAgent } from "../services/agent";
 import { startListening, stopListening } from "../services/listen";
@@ -89,7 +89,7 @@ export function registerSettingsHandlers(botCtx: BotContext) {
     await ctx.answerCallbackQuery();
     const uid = ctx.from!.id;
     if (botCtx.secretStore.hasWallet(uid)) {
-      const addr = botCtx.secretStore.getWalletAddress(uid)!;
+      const addr = friendlyAddr(botCtx.secretStore.getWalletAddress(uid)!, NETWORK === "testnet");
       const userAgent = await getUserAgent(botCtx, uid);
       let bal = "?";
       try { bal = formatTon(((await userAgent.runAction("get_balance", {})) as any).balance || "0"); } catch {}
@@ -126,12 +126,16 @@ export function registerSettingsHandlers(botCtx: BotContext) {
       return;
     }
     const words = stored.mnemonic.split(" ");
-    const lines: string[] = [];
-    for (let i = 0; i < words.length; i += 6) {
-      lines.push(words.slice(i, i + 6).map((w, j) => `${i + j + 1}. ${w}`).join("  "));
+    let grid = "";
+    for (let i = 0; i < words.length; i += 3) {
+      const row = words.slice(i, i + 3).map((w, j) => {
+        const num = String(i + j + 1).padStart(2, " ");
+        return `${num}. ${w.padEnd(10)}`;
+      }).join("");
+      grid += (grid ? "\n" : "") + row;
     }
     const msg = await ctx.editMessageText(
-      `<b>🔑 Your mnemonic</b>\n\n<code>${escapeHtml(lines.join("\n"))}</code>\n\n⚠️ <b>This message will be deleted in 30 seconds.</b>`,
+      `<b>🔑 Your mnemonic</b>\n\n<pre>${escapeHtml(grid)}</pre>\n\n⚠️ <b>This message will be deleted in 30 seconds.</b>`,
       { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("🗑️ Delete now", "settings_wallet") },
     );
     setTimeout(async () => {

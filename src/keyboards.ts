@@ -30,7 +30,8 @@ export function browseIntentsKb(intents: any[], page: number): InlineKeyboard {
     kb.text(`Offer on #${i.intentIndex}`, `offer_${i.intentIndex}`).row();
   }
   if (page > 0) kb.text("« Prev", `browse_page_${page - 1}`);
-  kb.text("Next »", `browse_page_${page + 1}`).row();
+  if (intents.length === 5) kb.text("Next »", `browse_page_${page + 1}`);
+  if (page > 0 || intents.length === 5) kb.row();
   kb.text("« Back", "btn_intents");
   return kb;
 }
