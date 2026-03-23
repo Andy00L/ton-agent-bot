@@ -232,14 +232,6 @@ async function main() {
       log("BUYER", "DEPOSIT", `Depositing to escrow ${escrowId}...`);
       await agent.runAction("deposit_to_escrow", { escrowId });
       logSuccess("BUYER", "DEPOSIT", "Deposited");
-
-      // Verify escrow is funded before paying
-      const escrowInfo = await agent.runAction("get_escrow_info", { escrowId }) as any;
-      if (!escrowInfo?.deposited && !escrowInfo?.amount) {
-        logError("BUYER", "DEPOSIT", "Escrow not funded after deposit, skipping round");
-        await sleep(ROUND_INTERVAL);
-        continue;
-      }
     } catch (err: any) {
       logError("BUYER", "ESCROW", err.message);
       await sleep(ROUND_INTERVAL);

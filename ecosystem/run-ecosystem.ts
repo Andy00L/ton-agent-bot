@@ -13,13 +13,15 @@ async function main() {
 
   const procs: ReturnType<typeof Bun.spawn>[] = [];
 
-  const SERVICE_URL = process.env.SERVICE_URL ?? `http://localhost:4001`;
+  const ip = await fetch('https://api.ipify.org').then(r => r.text());
+  const serviceUrl = `http://${ip}:4001`;
+  log("ECOSYSTEM", "NETWORK", `Public URL: ${serviceUrl}`);
 
   log("ECOSYSTEM", "LAUNCH", "Starting service-bot...");
   procs.push(
     Bun.spawn(["bun", "run", "ecosystem/service-bot.ts"], {
       stdio: ["inherit", "inherit", "inherit"],
-      env: { ...process.env, SERVICE_URL },
+      env: { ...process.env, SERVICE_URL: serviceUrl },
     }),
   );
   await sleep(10_000); // Let service register + start x402 server
