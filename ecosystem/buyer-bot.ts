@@ -160,10 +160,14 @@ async function main() {
         return price < parseFloat(best?.price || "999") ? o : best;
       }, list[0]);
 
+      const priceInTon = parseFloat(bestOffer.price) > 1000
+        ? (parseFloat(bestOffer.price) / 1e9).toString()
+        : bestOffer.price;
+
       logSuccess(
         "BUYER",
         "OFFERS",
-        `Best: #${bestOffer.offerIndex} at ${bestOffer.price} TON from ${(bestOffer.seller || "?").slice(0, 20)}...`,
+        `Best: #${bestOffer.offerIndex} at ${priceInTon} TON from ${(bestOffer.seller || "?").slice(0, 20)}...`,
       );
     } catch (err: any) {
       logError("BUYER", "OFFERS", err.message);
@@ -197,11 +201,11 @@ async function main() {
       log(
         "BUYER",
         "ESCROW",
-        `Creating escrow (beneficiary: ${(bestOffer.seller || "?").slice(0, 20)}..., amount: ${bestOffer.price} TON)...`,
+        `Creating escrow (beneficiary: ${(bestOffer.seller || "?").slice(0, 20)}..., amount: ${priceInTon} TON)...`,
       );
       const escrow = (await agent.runAction("create_escrow", {
         beneficiary: bestOffer.seller,
-        amount: bestOffer.price,
+        amount: priceInTon,
         minArbiters: 3,
         description: `Payment for ${svc.service} (intent #${intentIndex})`,
         deadlineMinutes: 60,
@@ -221,6 +225,14 @@ async function main() {
       log("BUYER", "DEPOSIT", `Depositing to escrow ${escrowId}...`);
       await agent.runAction("deposit_to_escrow", { escrowId });
       logSuccess("BUYER", "DEPOSIT", "Deposited");
+
+      // Verify escrow is funded before paying
+      const escrowInfo = await agent.runAction("get_escrow_info", { escrowId }) as any;
+      if (!escrowInfo?.deposited && !escrowInfo?.amount) {
+        logError("BUYER", "DEPOSIT", "Escrow not funded after deposit, skipping round");
+        await sleep(ROUND_INTERVAL);
+        continue;
+      }
     } catch (err: any) {
       logError("BUYER", "ESCROW", err.message);
       await sleep(ROUND_INTERVAL);
