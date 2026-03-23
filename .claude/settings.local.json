@@ -12,7 +12,8 @@
       "Bash(do echo:*)",
       "Read(//c/Users/0ther/CODE/personal/ai_hackathon/ton-agent-bot/**)",
       "Bash(done)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pwd:*)"
     ]
   }
 }
