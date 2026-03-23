@@ -2,7 +2,11 @@
 // Buyer bot — creates intents, accepts offers, pays x402, confirms delivery
 // NO LLM. Pure scripted loop.
 
-import { TonAgentKit, KeypairWallet } from "@ton-agent-kit/core";
+import {
+  TonAgentKit,
+  KeypairWallet,
+  toFriendlyAddress,
+} from "@ton-agent-kit/core";
 import { mnemonicNew } from "@ton/crypto";
 import TokenPlugin from "@ton-agent-kit/plugin-token";
 import EscrowPlugin from "@ton-agent-kit/plugin-escrow";
@@ -14,7 +18,8 @@ import { log, logError, logSuccess, sleep } from "./logger";
 // ══════════════════════════════════════
 // CONFIG — Leave mnemonic empty to auto-generate
 // ══════════════════════════════════════
-const MNEMONIC = "";
+const MNEMONIC =
+  "certain trap dentist thought leg female jeans note cheese story bargain occur cancel shock trip wise pitch census truck congress ordinary release advice coil";
 const NETWORK: "testnet" | "mainnet" = "testnet";
 const RPC_URL = "https://testnet-v4.tonhubapi.com";
 const AGENT_NAME = "buyer-bot";
@@ -41,10 +46,17 @@ async function main() {
   } else {
     words = await mnemonicNew(24);
     log("BUYER", "MNEMONIC", `Generated: ${words.join(" ")}`);
-    log("BUYER", "MNEMONIC", "Fund this wallet on https://t.me/testgiver_ton_bot");
+    log(
+      "BUYER",
+      "MNEMONIC",
+      "Fund this wallet on https://t.me/testgiver_ton_bot",
+    );
   }
-  const wallet = await KeypairWallet.fromMnemonic(words, { network: NETWORK, version: "V5R1" });
-  const myAddr = wallet.address.toString({ bounceable: false, testOnly: NETWORK === "testnet" });
+  const wallet = await KeypairWallet.fromMnemonic(words, {
+    network: NETWORK,
+    version: "V5R1",
+  });
+  const myAddr = toFriendlyAddress(wallet.address, NETWORK === "testnet");
   log("BUYER", "WALLET", `Address: ${myAddr}`);
 
   const agent = new TonAgentKit(wallet, RPC_URL, {}, NETWORK)
@@ -93,7 +105,11 @@ async function main() {
     // Step 1: Broadcast intent
     let intentIndex: number | null = null;
     try {
-      log("BUYER", "INTENT", `Broadcasting: ${svc.service} (budget: ${BUDGET} TON)...`);
+      log(
+        "BUYER",
+        "INTENT",
+        `Broadcasting: ${svc.service} (budget: ${BUDGET} TON)...`,
+      );
       const intent = (await agent.runAction("broadcast_intent", {
         service: svc.service,
         budget: BUDGET,
@@ -104,7 +120,11 @@ async function main() {
       if (intentIndex !== null) {
         logSuccess("BUYER", "INTENT", `Intent #${intentIndex} broadcast`);
       } else {
-        logError("BUYER", "INTENT", `No intentIndex in response: ${JSON.stringify(intent)}`);
+        logError(
+          "BUYER",
+          "INTENT",
+          `No intentIndex in response: ${JSON.stringify(intent)}`,
+        );
         await sleep(ROUND_INTERVAL);
         continue;
       }
@@ -122,7 +142,9 @@ async function main() {
     let bestOffer: any = null;
     try {
       log("BUYER", "OFFERS", `Checking offers on intent #${intentIndex}...`);
-      const offers = (await agent.runAction("get_offers", { intentIndex })) as any;
+      const offers = (await agent.runAction("get_offers", {
+        intentIndex,
+      })) as any;
       const list = offers?.offers || [];
       log("BUYER", "OFFERS", `Found ${list.length} offers`);
 
@@ -138,9 +160,20 @@ async function main() {
         return price < parseFloat(best?.price || "999") ? o : best;
       }, list[0]);
 
-      logSuccess("BUYER", "OFFERS", `Best: #${bestOffer.offerIndex} at ${bestOffer.price} TON from ${(bestOffer.seller || "?").slice(0, 20)}...`);
+      logSuccess(
+        "BUYER",
+        "OFFERS",
+        `Best: #${bestOffer.offerIndex} at ${bestOffer.price} TON from ${(bestOffer.seller || "?").slice(0, 20)}...`,
+      );
     } catch (err: any) {
       logError("BUYER", "OFFERS", err.message);
+      await sleep(ROUND_INTERVAL);
+      continue;
+    }
+
+    // Validate seller address before proceeding
+    if (!bestOffer.seller) {
+      logError("BUYER", "ESCROW", "Offer has no seller address, skipping");
       await sleep(ROUND_INTERVAL);
       continue;
     }
@@ -148,7 +181,9 @@ async function main() {
     // Step 4: Accept offer
     try {
       log("BUYER", "ACCEPT", `Accepting offer #${bestOffer.offerIndex}...`);
-      await agent.runAction("accept_offer", { offerIndex: bestOffer.offerIndex });
+      await agent.runAction("accept_offer", {
+        offerIndex: bestOffer.offerIndex,
+      });
       logSuccess("BUYER", "ACCEPT", `Offer #${bestOffer.offerIndex} accepted`);
     } catch (err: any) {
       logError("BUYER", "ACCEPT", err.message);
@@ -159,7 +194,11 @@ async function main() {
     // Step 5: Create escrow + deposit
     let escrowId: string | null = null;
     try {
-      log("BUYER", "ESCROW", `Creating escrow (beneficiary: ${(bestOffer.seller || "?").slice(0, 20)}..., amount: ${bestOffer.price} TON)...`);
+      log(
+        "BUYER",
+        "ESCROW",
+        `Creating escrow (beneficiary: ${(bestOffer.seller || "?").slice(0, 20)}..., amount: ${bestOffer.price} TON)...`,
+      );
       const escrow = (await agent.runAction("create_escrow", {
         beneficiary: bestOffer.seller,
         amount: bestOffer.price,
@@ -169,7 +208,11 @@ async function main() {
       })) as any;
       escrowId = escrow?.escrowId || escrow?.escrowAddress || null;
       if (!escrowId) {
-        logError("BUYER", "ESCROW", `No escrowId in response: ${JSON.stringify(escrow)}`);
+        logError(
+          "BUYER",
+          "ESCROW",
+          `No escrowId in response: ${JSON.stringify(escrow)}`,
+        );
         await sleep(ROUND_INTERVAL);
         continue;
       }
@@ -193,7 +236,11 @@ async function main() {
           url: endpoint,
           escrowId,
         })) as any;
-        logSuccess("BUYER", "PAY", `Paid! txHash: ${payment?.txHash || "?"}, proof: ${(payment?.deliveryProof?.responseHash || "?").slice(0, 16)}...`);
+        logSuccess(
+          "BUYER",
+          "PAY",
+          `Paid! txHash: ${payment?.txHash || "?"}, proof: ${(payment?.deliveryProof?.responseHash || "?").slice(0, 16)}...`,
+        );
 
         // Step 7: Confirm delivery (may be auto-done by pay_for_resource with escrowId)
         await sleep(5000);
@@ -206,7 +253,11 @@ async function main() {
           logSuccess("BUYER", "CONFIRM", "Delivery confirmed on-chain");
         } catch (err: any) {
           // May already be confirmed by pay_for_resource
-          log("BUYER", "CONFIRM", `Skipped or already done: ${err.message?.slice(0, 80)}`);
+          log(
+            "BUYER",
+            "CONFIRM",
+            `Skipped or already done: ${err.message?.slice(0, 80)}`,
+          );
         }
 
         // Step 8: Release escrow

@@ -1,7 +1,7 @@
 // ecosystem/run-ecosystem.ts
 // Launches all ecosystem bots in parallel with staggered starts
 
-import { log, sleep } from "./logger";
+import { log, logError, sleep } from "./logger";
 
 async function main() {
   log("ECOSYSTEM", "INIT", "═══════════════════════════════════════");
@@ -13,13 +13,22 @@ async function main() {
 
   const procs: ReturnType<typeof Bun.spawn>[] = [];
 
+  const SERVICE_URL = process.env.SERVICE_URL ?? `http://localhost:4001`;
+
   log("ECOSYSTEM", "LAUNCH", "Starting service-bot...");
   procs.push(
     Bun.spawn(["bun", "run", "ecosystem/service-bot.ts"], {
       stdio: ["inherit", "inherit", "inherit"],
+      env: { ...process.env, SERVICE_URL },
     }),
   );
   await sleep(10_000); // Let service register + start x402 server
+
+  // Verify service-bot didn't crash during startup
+  if (procs[0].exitCode !== null) {
+    logError("ECOSYSTEM", "LAUNCH", `service-bot crashed (exit ${procs[0].exitCode}), aborting`);
+    process.exit(1);
+  }
 
   log("ECOSYSTEM", "LAUNCH", "Starting arbiter-bot (3 arbiters)...");
   procs.push(

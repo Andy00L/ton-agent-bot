@@ -2,14 +2,19 @@
 // Service Provider bot — serves images, audio, gif via x402
 // NO LLM. Pure scripted loop.
 
-import { TonAgentKit, KeypairWallet } from "@ton-agent-kit/core";
-import { mnemonicNew } from "@ton/crypto";
-import TokenPlugin from "@ton-agent-kit/plugin-token";
+import {
+  KeypairWallet,
+  toFriendlyAddress,
+  TonAgentKit,
+} from "@ton-agent-kit/core";
+import { selectNetworkMode } from "@ton-agent-kit/network-mode";
+import AgentCommPlugin from "@ton-agent-kit/plugin-agent-comm";
 import EscrowPlugin from "@ton-agent-kit/plugin-escrow";
 import IdentityPlugin from "@ton-agent-kit/plugin-identity";
-import AgentCommPlugin from "@ton-agent-kit/plugin-agent-comm";
 import PaymentsPlugin from "@ton-agent-kit/plugin-payments";
-import { tonPaywall, MemoryReplayStore } from "@ton-agent-kit/x402-middleware";
+import TokenPlugin from "@ton-agent-kit/plugin-token";
+import { MemoryReplayStore, tonPaywall } from "@ton-agent-kit/x402-middleware";
+import { mnemonicNew } from "@ton/crypto";
 import express from "express";
 import { readFileSync } from "fs";
 import { log, logError, logSuccess, sleep } from "./logger";
@@ -17,11 +22,11 @@ import { log, logError, logSuccess, sleep } from "./logger";
 // ══════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════
-const MNEMONIC = ""; // Leave empty to auto-generate. Paste 24 words to reuse.
+const MNEMONIC =
+  "meat inquiry manual movie memory brave fiction dawn gossip dynamic force nothing success teach flash cry chapter keen invest nurse youth spider aware disease"; // Leave empty to auto-generate. Paste 24 words to reuse.
 const NETWORK: "testnet" | "mainnet" = "testnet";
 const RPC_URL = "https://testnet-v4.tonhubapi.com";
 const X402_PORT = 4001;
-const PUBLIC_URL = process.env.SERVICE_URL || `http://localhost:${X402_PORT}`;
 const AGENT_NAME = "media-service";
 const CAPABILITIES = ["image_delivery", "audio_delivery", "gif_delivery"];
 const POLL_INTERVAL = 30_000;
@@ -40,10 +45,17 @@ async function main() {
   } else {
     words = await mnemonicNew(24);
     log("SERVICE", "MNEMONIC", `Generated: ${words.join(" ")}`);
-    log("SERVICE", "MNEMONIC", "Fund this wallet on https://t.me/testgiver_ton_bot");
+    log(
+      "SERVICE",
+      "MNEMONIC",
+      "Fund this wallet on https://t.me/testgiver_ton_bot",
+    );
   }
-  const wallet = await KeypairWallet.fromMnemonic(words, { network: NETWORK, version: "V5R1" });
-  const walletAddr = wallet.address.toString({ bounceable: false, testOnly: NETWORK === "testnet" });
+  const wallet = await KeypairWallet.fromMnemonic(words, {
+    network: NETWORK,
+    version: "V5R1",
+  });
+  const walletAddr = toFriendlyAddress(wallet.address, NETWORK === "testnet");
   log("SERVICE", "WALLET", `Address: ${walletAddr}`);
 
   const agent = new TonAgentKit(wallet, RPC_URL, {}, NETWORK)
@@ -61,6 +73,16 @@ async function main() {
     logError("SERVICE", "BALANCE", err.message);
   }
 
+  // ══ Detect public URL — env var first (non-interactive), prompt as fallback ══
+  let PUBLIC_URL = process.env.SERVICE_URL;
+  if (PUBLIC_URL) {
+    log("SERVICE", "NETWORK", `Using SERVICE_URL from env: ${PUBLIC_URL}`);
+  } else {
+    log("SERVICE", "NETWORK", "Selecting network mode...");
+    PUBLIC_URL = await selectNetworkMode(X402_PORT);
+  }
+  log("SERVICE", "NETWORK", `Public URL: ${PUBLIC_URL}`);
+
   // ══ x402 Express server ══
   const app = express();
   const replayStore = new MemoryReplayStore();
@@ -72,8 +94,8 @@ async function main() {
       log("SERVICE", "ASSETS", `${label} loaded (${buf.length} bytes)`);
       return buf;
     } catch {
-      log("SERVICE", "ASSETS", `${label} not found, using placeholder`);
-      return Buffer.from(`placeholder-${label}`);
+      logError("SERVICE", "ASSETS", `${label} not found — aborting`);
+      process.exit(1);
     }
   };
   const imageBuffer = loadAsset("ecosystem/assets/sample.png", "sample.png");
@@ -110,10 +132,16 @@ async function main() {
   });
 
   app.get("/", (_req: any, res: any) => {
-    res.json({ status: "ok", agent: AGENT_NAME, endpoints: ["/api/image", "/api/audio", "/api/gif"] });
+    res.json({
+      status: "ok",
+      agent: AGENT_NAME,
+      endpoints: ["/api/image", "/api/audio", "/api/gif"],
+    });
   });
 
-  app.listen(X402_PORT, () => log("SERVICE", "x402", `Server running on port ${X402_PORT}`));
+  app.listen(X402_PORT, () =>
+    log("SERVICE", "x402", `Server running on port ${X402_PORT}`),
+  );
 
   // ══ Register agent ══
   try {
@@ -123,7 +151,11 @@ async function main() {
       capabilities: CAPABILITIES,
       endpoint: PUBLIC_URL,
     });
-    logSuccess("SERVICE", "REGISTER", `Agent registered: ${JSON.stringify(reg)}`);
+    logSuccess(
+      "SERVICE",
+      "REGISTER",
+      `Agent registered: ${JSON.stringify(reg)}`,
+    );
   } catch (err: any) {
     if (err.message?.includes("already registered")) {
       log("SERVICE", "REGISTER", "Agent already registered, continuing...");
@@ -133,7 +165,11 @@ async function main() {
   }
 
   // ══ Main loop: poll intents → send offers ══
-  log("SERVICE", "LOOP", `Starting poll loop (every ${POLL_INTERVAL / 1000}s)...`);
+  log(
+    "SERVICE",
+    "LOOP",
+    `Starting poll loop (every ${POLL_INTERVAL / 1000}s)...`,
+  );
   const offeredIntents = new Set<number>();
 
   while (true) {
@@ -147,13 +183,32 @@ async function main() {
         const idx = intent.intentIndex as number;
         const service = (intent.serviceName || intent.service || "") as string;
 
+        if (offeredIntents.size > 500) offeredIntents.clear();
         if (offeredIntents.has(idx)) continue;
 
         // Check if we can serve this intent
-        const keywords = ["image", "audio", "gif", "media", "file", "content", "music", "sound", "animation", "picture", "photo"];
-        const canServe = keywords.some((kw) => service.toLowerCase().includes(kw));
+        const keywords = [
+          "image",
+          "audio",
+          "gif",
+          "media",
+          "file",
+          "content",
+          "music",
+          "sound",
+          "animation",
+          "picture",
+          "photo",
+        ];
+        const canServe = keywords.some((kw) =>
+          service.toLowerCase().includes(kw),
+        );
         if (!canServe) {
-          log("SERVICE", "SKIP", `Intent #${idx} (${service}) — not our domain`);
+          log(
+            "SERVICE",
+            "SKIP",
+            `Intent #${idx} (${service}) — not our domain`,
+          );
           continue;
         }
 
@@ -166,7 +221,11 @@ async function main() {
         }
 
         // Send offer
-        log("SERVICE", "OFFER", `Sending offer on intent #${idx} (${service}): ${OFFER_PRICE} TON`);
+        log(
+          "SERVICE",
+          "OFFER",
+          `Sending offer on intent #${idx} (${service}): ${OFFER_PRICE} TON`,
+        );
         try {
           const offer = await agent.runAction("send_offer", {
             intentIndex: idx,
@@ -175,7 +234,11 @@ async function main() {
             endpoint,
           });
           offeredIntents.add(idx);
-          logSuccess("SERVICE", "OFFER", `Offer sent: ${JSON.stringify(offer)}`);
+          logSuccess(
+            "SERVICE",
+            "OFFER",
+            `Offer sent: ${JSON.stringify(offer)}`,
+          );
         } catch (err: any) {
           logError("SERVICE", "OFFER", `Failed on #${idx}: ${err.message}`);
           offeredIntents.add(idx); // Don't retry

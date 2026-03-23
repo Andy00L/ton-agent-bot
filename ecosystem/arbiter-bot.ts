@@ -2,7 +2,11 @@
 // 3 Arbiter bots in 1 file — join disputes, vote, claim rewards
 // NO LLM. Pure scripted loop.
 
-import { TonAgentKit, KeypairWallet } from "@ton-agent-kit/core";
+import {
+  TonAgentKit,
+  KeypairWallet,
+  toFriendlyAddress,
+} from "@ton-agent-kit/core";
 import { mnemonicNew } from "@ton/crypto";
 import TokenPlugin from "@ton-agent-kit/plugin-token";
 import EscrowPlugin from "@ton-agent-kit/plugin-escrow";
@@ -13,9 +17,21 @@ import { log, logError, logSuccess, sleep } from "./logger";
 // CONFIG — Leave mnemonic empty to auto-generate
 // ══════════════════════════════════════
 const ARBITERS = [
-  { name: "arbiter-alpha", mnemonic: "" },
-  { name: "arbiter-beta", mnemonic: "" },
-  { name: "arbiter-gamma", mnemonic: "" },
+  {
+    name: "arbiter-alpha",
+    mnemonic:
+      "card owner state soccer style account yellow gauge connect office hospital reform distance smoke essence eight connect estate aim humble question state satisfy firm",
+  },
+  {
+    name: "arbiter-beta",
+    mnemonic:
+      "delay erode danger distance awake album pitch few reason only sudden rubber dynamic bleak school blast witness giggle cradle silly broom belt donate crisp",
+  },
+  {
+    name: "arbiter-gamma",
+    mnemonic:
+      "pilot road sight wear piano genuine plunge end camera glide work ramp spatial rifle meat army ecology demise cream dirt home spell urge gauge",
+  },
 ];
 const NETWORK: "testnet" | "mainnet" = "testnet";
 const RPC_URL = "https://testnet-v4.tonhubapi.com";
@@ -39,8 +55,15 @@ async function runArbiter(config: (typeof ARBITERS)[0]) {
     log(BOT, "MNEMONIC", `Generated: ${words.join(" ")}`);
     log(BOT, "MNEMONIC", "Fund this wallet on https://t.me/testgiver_ton_bot");
   }
-  const wallet = await KeypairWallet.fromMnemonic(words, { network: NETWORK, version: "V5R1" });
-  log(BOT, "WALLET", `Address: ${wallet.address.toString({ bounceable: false, testOnly: NETWORK === "testnet" })}`);
+  const wallet = await KeypairWallet.fromMnemonic(words, {
+    network: NETWORK,
+    version: "V5R1",
+  });
+  log(
+    BOT,
+    "WALLET",
+    `Address: ${toFriendlyAddress(wallet.address, NETWORK === "testnet")}`,
+  );
 
   const agent = new TonAgentKit(wallet, RPC_URL, {}, NETWORK)
     .use(TokenPlugin)
@@ -77,7 +100,9 @@ async function runArbiter(config: (typeof ARBITERS)[0]) {
   while (true) {
     try {
       log(BOT, "POLL", "Checking open disputes...");
-      const disputes = (await agent.runAction("get_open_disputes", { limit: 10 })) as any;
+      const disputes = (await agent.runAction("get_open_disputes", {
+        limit: 10,
+      })) as any;
       const list = disputes?.disputes || [];
       log(BOT, "POLL", `Found ${list.length} open disputes`);
 
@@ -97,7 +122,7 @@ async function runArbiter(config: (typeof ARBITERS)[0]) {
           logSuccess(BOT, "JOIN", `Joined dispute on ${escrowId}`);
         } catch (err: any) {
           logError(BOT, "JOIN", `Failed: ${err.message}`);
-          joinedDisputes.add(escrowId); // Don't retry
+          // Don't mark as joined — will retry on next poll
           continue;
         }
 
@@ -105,18 +130,34 @@ async function runArbiter(config: (typeof ARBITERS)[0]) {
         await sleep(5000);
 
         try {
-          const info = (await agent.runAction("get_escrow_info", { escrowId })) as any;
+          const info = (await agent.runAction("get_escrow_info", {
+            escrowId,
+          })) as any;
           const deliveryConfirmed = info?.deliveryConfirmed === true;
-          const hasProof = !!(info?.x402ProofHash && info.x402ProofHash.length > 0);
+          const hasProof = !!(
+            info?.x402ProofHash && info.x402ProofHash.length > 0
+          );
 
-          log(BOT, "DECIDE", `Escrow ${escrowId}: proof=${hasProof}, delivered=${deliveryConfirmed}`);
+          log(
+            BOT,
+            "DECIDE",
+            `Escrow ${escrowId}: proof=${hasProof}, delivered=${deliveryConfirmed}`,
+          );
 
           if (deliveryConfirmed || hasProof) {
-            log(BOT, "VOTE", `Voting RELEASE on ${escrowId} (delivery confirmed or proof found)`);
+            log(
+              BOT,
+              "VOTE",
+              `Voting RELEASE on ${escrowId} (delivery confirmed or proof found)`,
+            );
             await agent.runAction("vote_release", { escrowId });
             logSuccess(BOT, "VOTE", `Voted RELEASE on ${escrowId}`);
           } else {
-            log(BOT, "VOTE", `Voting REFUND on ${escrowId} (no proof of delivery)`);
+            log(
+              BOT,
+              "VOTE",
+              `Voting REFUND on ${escrowId} (no proof of delivery)`,
+            );
             await agent.runAction("vote_refund", { escrowId });
             logSuccess(BOT, "VOTE", `Voted REFUND on ${escrowId}`);
           }
@@ -128,7 +169,11 @@ async function runArbiter(config: (typeof ARBITERS)[0]) {
         await sleep(10_000);
         try {
           const reward = await agent.runAction("claim_reward", { escrowId });
-          logSuccess(BOT, "REWARD", `Claimed on ${escrowId}: ${JSON.stringify(reward)}`);
+          logSuccess(
+            BOT,
+            "REWARD",
+            `Claimed on ${escrowId}: ${JSON.stringify(reward)}`,
+          );
         } catch (err: any) {
           log(BOT, "REWARD", `Not ready: ${err.message?.slice(0, 80)}`);
         }
