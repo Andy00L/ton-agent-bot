@@ -9,6 +9,7 @@ import { mainMenuKb } from "../keyboards";
 import { getUserAgent, getUserOpenAI, makeSystemPrompt } from "./agent";
 import { requestApproval } from "./approval";
 import { handleActionResult } from "./files";
+import { pollMyOffers } from "./listen";
 
 // ── LLM tool loop (shared by normal + auto mode) ──
 export async function executeLLMLoop(
@@ -73,9 +74,22 @@ export async function executeLLMLoop(
             verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `pay_for_resource receipt for ${fp.url || "service"}`);
             try { await ctx.bot.api.sendMessage(chatId, `<b>Paid</b> for ${escapeHtml(fp.url || "service")}\nFile saved (48h): ${stored.fileId}\nView in Files`, { parse_mode: "HTML" }); } catch {}
           }
-          // Track intents
-          if (fn === "broadcast_intent" && (ar as any)?.intentIndex !== undefined) {
+          // Track intents + auto-start offer polling
+          if (fn === "broadcast_intent" && (ar as any)?.intentIndex !== undefined && (ar as any).intentIndex >= 0) {
             state.myActiveIntents.set((ar as any).intentIndex, { service: fp.service || "unknown", createdAt: Date.now() });
+            // Start background polling for offers on this intent — service-bot needs 30-60s to find and respond
+            if (!state.offerTrackTimer) {
+              const pollTimer = setInterval(async () => {
+                try { await pollMyOffers(ctx, uid); } catch {}
+                // Stop after 10 minutes
+                if (Date.now() - (ar as any)._pollStart > 600_000) {
+                  clearInterval(pollTimer);
+                  if (state.offerTrackTimer === pollTimer) state.offerTrackTimer = undefined;
+                }
+              }, 15_000);
+              (ar as any)._pollStart = Date.now();
+              state.offerTrackTimer = pollTimer;
+            }
           }
           if ((fn === "accept_offer" || fn === "cancel_intent") && fp.intentIndex !== undefined) {
             state.myActiveIntents.delete(fp.intentIndex);
