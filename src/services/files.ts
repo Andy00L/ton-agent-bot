@@ -17,6 +17,41 @@ function toBuffer(val: any): Buffer | null {
   return null;
 }
 
+// ── Send binary content to Telegram based on content-type ──
+async function sendMedia(
+  ctx: BotContext, uid: number, chatId: number, action: string, ct: string, buf: Buffer,
+): Promise<{ summary: string; fileId: string | null }> {
+  if (buf.length > MAX_FILE_SIZE) {
+    return { summary: JSON.stringify({ error: `Response too large (${(buf.length / 1024 / 1024).toFixed(1)} MB). Max 10 MB.` }), fileId: null };
+  }
+  const sizeStr = `${(buf.length / 1024).toFixed(1)} KB`;
+  if (ct === "image/gif") {
+    const fileId = ctx.fileStore.save(uid, `${action}.gif`, "image/gif", buf, action);
+    verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAnimation: ${action}.gif`);
+    try { await ctx.bot.api.sendAnimation(chatId, new InputFile(buf, `${action}.gif`), { caption: `${action} (saved 48h)` }); } catch {}
+    return { summary: JSON.stringify({ type: "animation", fileId, size: sizeStr, sent: true }), fileId };
+  }
+  if (ct.startsWith("image/")) {
+    const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+    const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
+    verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendPhoto: ${action}.${ext}`);
+    try { await ctx.bot.api.sendPhoto(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved 48h)` }); } catch {}
+    return { summary: JSON.stringify({ type: "image", fileId, size: sizeStr, sent: true }), fileId };
+  }
+  if (ct.startsWith("audio/")) {
+    const ext = ct.includes("ogg") ? "ogg" : ct.includes("wav") ? "wav" : "mp3";
+    const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
+    verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAudio: ${action}.${ext}`);
+    try { await ctx.bot.api.sendAudio(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved 48h)` }); } catch {}
+    return { summary: JSON.stringify({ type: "audio", fileId, size: sizeStr, sent: true }), fileId };
+  }
+  const subtype = ct.split("/")[1] || "bin";
+  const fileId = ctx.fileStore.save(uid, `${action}.${subtype}`, ct, buf, action);
+  verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendDocument: ${action}.${subtype}`);
+  try { await ctx.bot.api.sendDocument(chatId, new InputFile(buf, `${action}.${subtype}`), { caption: `${action} (saved 48h)` }); } catch {}
+  return { summary: JSON.stringify({ type: "document", fileId, size: sizeStr, sent: true }), fileId };
+}
+
 // ── File handling for action results ──
 export async function handleActionResult(
   ctx: BotContext, uid: number, chatId: number, action: string, result: any,
@@ -24,84 +59,43 @@ export async function handleActionResult(
   if (result === null || result === undefined) return { summary: "null", fileId: null };
   if (result?.error) return { summary: JSON.stringify(result), fileId: null };
 
-  // x402 paid content — re-fetch using payment hash
-  if (action === "pay_for_resource" && result?.paid === true && result?.txHash && result?.deliveryProof) {
-    const endpointUrl = (result as any).url;
-    if (endpointUrl) {
-      try {
-        const response = await fetch(endpointUrl, {
-          headers: { "X-Payment-Hash": result.txHash },
-        });
-        if (response.ok) {
-          const ct = response.headers.get("content-type") || "";
-          const buf = Buffer.from(await response.arrayBuffer());
-          if (ct.startsWith("image/gif") || endpointUrl.includes("/gif")) {
-            const fileId = ctx.fileStore.save(uid, `${action}.gif`, "image/gif", buf, action);
-            verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAnimation: ${action}.gif`);
-            try { await ctx.bot.api.sendAnimation(chatId, new InputFile(buf, `${action}.gif`), { caption: `${action} (saved 48h)` }); } catch {}
-            return { summary: JSON.stringify({ type: "animation", fileId, size: `${(buf.length/1024).toFixed(1)} KB`, sent: true }), fileId };
-          }
-          if (ct.startsWith("image/")) {
-            const ext = ct.includes("png") ? "png" : "jpg";
-            const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
-            verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendPhoto: ${action}.${ext}`);
-            try { await ctx.bot.api.sendPhoto(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved 48h)` }); } catch {}
-            return { summary: JSON.stringify({ type: "image", fileId, size: `${(buf.length/1024).toFixed(1)} KB`, sent: true }), fileId };
-          }
-          if (ct.startsWith("audio/")) {
-            const ext = ct.includes("ogg") ? "ogg" : "mp3";
-            const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
-            verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAudio: ${action}.${ext}`);
-            try { await ctx.bot.api.sendAudio(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved 48h)` }); } catch {}
-            return { summary: JSON.stringify({ type: "audio", fileId, size: `${(buf.length/1024).toFixed(1)} KB`, sent: true }), fileId };
-          }
-        }
-      } catch {}
+  // ── x402 paid content ──
+  // Use the resource data directly from the result object.
+  // Do NOT re-fetch: the payment hash is consumed by the anti-replay store
+  // after the first successful verification — re-fetching always gets 402.
+  if (action === "pay_for_resource" && result?.paid === true) {
+    // Priority 1: result.data = { contentType: "image/png", data: <Buffer> }
+    // This is set by plugin-payments when verified:true and the response is binary.
+    // result.data.contentType is the REAL resource type (not the error response type).
+    const dataCt = (result?.data?.contentType as string | undefined)?.split(";")[0]?.trim();
+    const dataBuf = dataCt ? toBuffer(result.data) : null;
+    if (dataBuf && dataBuf.length > 0 && dataCt) {
+      return await sendMedia(ctx, uid, chatId, action, dataCt, dataBuf);
     }
+
+    // Priority 2: result.content with a media contentType (verified:true, non-binary parsed differently)
+    if (result.verified === true) {
+      const ct = ((result.contentType as string) || "").split(";")[0].trim();
+      const buf = toBuffer(result.content);
+      if (buf && buf.length > 0 && (ct.startsWith("image/") || ct.startsWith("audio/") || ct === "application/pdf" || ct === "application/octet-stream")) {
+        return await sendMedia(ctx, uid, chatId, action, ct, buf);
+      }
+    }
+
+    // verified:false or no binary content → fall through to JSON handler.
+    // The JSON response includes txHash, message, url for manual recovery.
   }
 
-  // Binary response with content-type (e.g. from pay_for_resource)
+  // ── Generic binary response (non-pay_for_resource actions) ──
   if (result?.contentType && (result?.content || result?.data)) {
-    const ct = result.contentType as string;
+    const ct = ((result.contentType as string) || "").split(";")[0].trim();
     const buf = toBuffer(result.content) || toBuffer(result.data);
-    if (!buf) {
-      return { summary: JSON.stringify(result), fileId: null };
-    }
-    if (buf.length > MAX_FILE_SIZE) {
-      return { summary: JSON.stringify({ error: `Response too large (${(buf.length / 1024 / 1024).toFixed(1)} MB). Max 10 MB.` }), fileId: null };
-    }
-    try {
-      if (ct === "image/gif") {
-        const fileId = ctx.fileStore.save(uid, `${action}.gif`, "image/gif", buf, action);
-        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAnimation: ${action}.gif`);
-        try { await ctx.bot.api.sendAnimation(chatId, new InputFile(buf, `${action}.gif`), { caption: `${action} (saved for 48h)` }); } catch {}
-        return { summary: JSON.stringify({ type: "animation", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
-      }
-      if (ct.startsWith("image/")) {
-        const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
-        const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
-        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendPhoto: ${action}.${ext}`);
-        try { await ctx.bot.api.sendPhoto(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved for 48h)` }); } catch {}
-        return { summary: JSON.stringify({ type: "image", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
-      }
-      if (ct.startsWith("audio/")) {
-        const ext = ct.includes("ogg") ? "ogg" : ct.includes("wav") ? "wav" : "mp3";
-        const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
-        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAudio: ${action}.${ext}`);
-        try { await ctx.bot.api.sendAudio(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved for 48h)` }); } catch {}
-        return { summary: JSON.stringify({ type: "audio", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
-      }
-      const subtype = ct.split("/")[1] || "bin";
-      const fileId = ctx.fileStore.save(uid, `${action}.${subtype}`, ct, buf, action);
-      verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendDocument: ${action}.${subtype}`);
-      try { await ctx.bot.api.sendDocument(chatId, new InputFile(buf, `${action}.${subtype}`), { caption: `${action} (saved for 48h)` }); } catch {}
-      return { summary: JSON.stringify({ type: "document", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
-    } catch (err: any) {
-      return { summary: JSON.stringify({ error: `File storage failed: ${err.message}` }), fileId: null };
+    if (buf && buf.length > 0 && ct) {
+      return await sendMedia(ctx, uid, chatId, action, ct, buf);
     }
   }
 
-  // JSON response
+  // ── JSON / text response ──
   const jsonStr = JSON.stringify(result);
   if (jsonStr.length < 4000) {
     let fileId: string | null = null;
