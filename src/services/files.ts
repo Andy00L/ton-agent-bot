@@ -84,10 +84,8 @@ export async function handleActionResult(
 
     // verified:false or no binary content → fall through to JSON handler.
     // The JSON response includes txHash, message, url for manual recovery.
-  }
-
+  } else if (result?.contentType && (result?.content || result?.data)) {
   // ── Generic binary response (non-pay_for_resource actions) ──
-  if (result?.contentType && (result?.content || result?.data)) {
     const ct = ((result.contentType as string) || "").split(";")[0].trim();
     const buf = toBuffer(result.content) || toBuffer(result.data);
     if (buf && buf.length > 0 && ct) {
