@@ -497,6 +497,7 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
     verboseLog(`BOT:${ctx.from?.id ?? "?"}`, "DIRECT_REPLY", "answerCallbackQuery: Accepting offer...");
     await ctx.answerCallbackQuery("Accepting offer...");
     const uid = ctx.from!.id;
+    const chatId = ctx.chat!.id;
     if (!botCtx.secretStore.hasWallet(uid)) {
       await ctx.editMessageText(`⚠️ This action requires a wallet. Set one up in Settings.`, { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("Set up wallet", "settings_wallet").text("« Back", "btn_main") });
       return;
@@ -504,11 +505,64 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
     const userAgent = await getUserAgent(botCtx, uid);
     const offerIdx = parseInt(ctx.match![1]);
     try {
+      // Step 1: Accept the offer on-chain
       await userAgent.runAction("accept_offer", { offerIndex: offerIdx });
       await ctx.editMessageText(
-        `<b>✅ Offer #${offerIdx} accepted!</b>\n\nCreating escrow and depositing funds...\n<i>You'll be guided through the next steps.</i>`,
-        { parse_mode: "HTML", reply_markup: mainMenuKb() },
+        `<b>✅ Offer #${offerIdx} accepted!</b>\n\n<i>Paying for resource via x402...</i>`,
+        { parse_mode: "HTML" },
       );
+
+      // Step 2: Find the offer's endpoint URL from on-chain data
+      // We need to look up which intent this offer belongs to and get the endpoint
+      let endpoint: string | null = null;
+      let sellerAddr: string | null = null;
+      try {
+        // Search recent intents for this offer
+        const myAddr = botCtx.secretStore.getWalletAddress(uid) || botCtx.devAddress;
+        const allIntents = (await userAgent.runAction("discover_intents", {})) as any;
+        for (const intent of (allIntents?.intents || [])) {
+          const offers = (await userAgent.runAction("get_offers", { intentIndex: intent.intentIndex })) as any;
+          const match = (offers?.offers || []).find((o: any) => o.offerIndex === offerIdx);
+          if (match) {
+            endpoint = match.endpoint || null;
+            sellerAddr = match.seller || null;
+            break;
+          }
+        }
+      } catch {}
+
+      // Step 3: If endpoint found, pay via x402 (direct path — no escrow needed for instant delivery)
+      if (endpoint && endpoint !== "pending") {
+        try {
+          verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `paying x402: ${endpoint}`);
+          await botCtx.bot.api.sendChatAction(chatId, "typing");
+          const { handleActionResult } = await import("../services/files");
+          const payment = await userAgent.runAction("pay_for_resource", { url: endpoint });
+          const stored = await handleActionResult(botCtx, uid, chatId, "pay_for_resource", payment);
+
+          if (stored.fileId && (payment as any).verified === true) {
+            await ctx.editMessageText(
+              `<b>✅ Purchase complete!</b>\n\nOffer #${offerIdx} paid via x402\nFile saved (48h): <code>${stored.fileId}</code>\nView in Files`,
+              { parse_mode: "HTML", reply_markup: mainMenuKb() },
+            );
+          } else {
+            await ctx.editMessageText(
+              `<b>✅ Offer #${offerIdx} accepted and paid!</b>\n\n${escapeHtml((payment as any).message || "Payment sent.")}`,
+              { parse_mode: "HTML", reply_markup: mainMenuKb() },
+            );
+          }
+        } catch (err: any) {
+          await ctx.editMessageText(
+            `<b>✅ Offer accepted</b> but payment failed:\n\n${escapeHtml(err.message.slice(0, 200))}\n\nEndpoint: <code>${escapeHtml(endpoint)}</code>`,
+            { parse_mode: "HTML", reply_markup: mainMenuKb() },
+          );
+        }
+      } else {
+        await ctx.editMessageText(
+          `<b>✅ Offer #${offerIdx} accepted!</b>\n\n<i>No endpoint provided — waiting for manual delivery from seller.</i>`,
+          { parse_mode: "HTML", reply_markup: mainMenuKb() },
+        );
+      }
     } catch (err: any) {
       await ctx.editMessageText(`<b>❌ Accept failed</b>\n\n${escapeHtml(err.message.slice(0, 200))}`, { parse_mode: "HTML", reply_markup: mainMenuKb() });
     }

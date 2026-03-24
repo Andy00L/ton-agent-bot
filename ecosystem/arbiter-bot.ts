@@ -35,7 +35,7 @@ const ARBITERS = [
 ];
 const NETWORK: "testnet" | "mainnet" = "testnet";
 const RPC_URL = "https://testnet-v4.tonhubapi.com";
-const POLL_INTERVAL = 45_000;
+const POLL_INTERVAL = 15_000;
 const STAKE_AMOUNT = "0.5"; // Default minStake per the SDK
 
 // ══════════════════════════════════════

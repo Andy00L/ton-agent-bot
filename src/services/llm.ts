@@ -172,7 +172,7 @@ export async function handleAutoMode(ctx: BotContext, gramCtx: any, state: UserS
     const userAddr = rawAddr ? friendlyAddr(rawAddr, NETWORK === "testnet") : ctx.devFriendlyAddr;
     const sysPrompt = makeSystemPrompt(ctx, uid, userAddr);
     const missionHistory: OpenAI.ChatCompletionMessageParam[] = [
-      { role: "system", content: sysPrompt + "\n\nMISSION MODE: Execute the following mission autonomously. Be decisive. Report results concisely." },
+      { role: "system", content: sysPrompt + "\n\nMISSION MODE: Execute the following mission autonomously. Be decisive — do NOT stop to ask for confirmation. If discover_agent returns no results, IMMEDIATELY try broader keywords, then broadcast_intent. If broadcast_intent succeeds, call get_offers to check for responses. Execute the FULL workflow end-to-end. Do NOT give up after 1 step." },
       { role: "user", content: goal },
     ];
     let stepCount = 0;

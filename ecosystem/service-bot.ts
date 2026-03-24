@@ -29,7 +29,7 @@ const RPC_URL = "https://testnet-v4.tonhubapi.com";
 const X402_PORT = 4001;
 const AGENT_NAME = "media-service";
 const CAPABILITIES = ["image_delivery", "audio_delivery", "gif_delivery"];
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 10_000;
 const OFFER_PRICE = "0.05";
 
 // ══════════════════════════════════════
@@ -200,6 +200,10 @@ async function main() {
           "animation",
           "picture",
           "photo",
+          "gift",
+          "nft",
+          "video",
+          "art",
         ];
         const canServe = keywords.some((kw) =>
           service.toLowerCase().includes(kw),
@@ -217,7 +221,7 @@ async function main() {
         let endpoint = `${PUBLIC_URL}/api/image`;
         if (/audio|music|sound/i.test(service)) {
           endpoint = `${PUBLIC_URL}/api/audio`;
-        } else if (/gif|animation/i.test(service)) {
+        } else if (/gif|animation|gift|nft/i.test(service)) {
           endpoint = `${PUBLIC_URL}/api/gif`;
         }
 

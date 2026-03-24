@@ -30,7 +30,7 @@ async function main() {
       env: { ...process.env, SERVICE_URL: serviceUrl },
     }),
   );
-  await sleep(10_000); // Let service register + start x402 server
+  await sleep(8_000); // Let service register + start x402 server
 
   // Verify service-bot didn't crash during startup
   if (procs[0].exitCode !== null) {
@@ -44,7 +44,7 @@ async function main() {
       stdio: ["inherit", "inherit", "inherit"],
     }),
   );
-  await sleep(10_000); // Let arbiters register
+  await sleep(8_000); // Let arbiters register
 
   log("ECOSYSTEM", "LAUNCH", "Starting buyer-bot...");
   procs.push(
