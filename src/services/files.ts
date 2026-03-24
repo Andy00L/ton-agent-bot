@@ -26,9 +26,7 @@ export async function handleActionResult(
 
   // x402 paid content — re-fetch using payment hash
   if (action === "pay_for_resource" && result?.paid === true && result?.txHash && result?.deliveryProof) {
-    const url = (result as any)._url || result?.deliveryProof?.url;
-    // Try to re-fetch the resource using the payment hash
-    const endpointUrl = (result as any).url || url;
+    const endpointUrl = (result as any).url;
     if (endpointUrl) {
       try {
         const response = await fetch(endpointUrl, {
@@ -73,6 +71,12 @@ export async function handleActionResult(
       return { summary: JSON.stringify({ error: `Response too large (${(buf.length / 1024 / 1024).toFixed(1)} MB). Max 10 MB.` }), fileId: null };
     }
     try {
+      if (ct === "image/gif") {
+        const fileId = ctx.fileStore.save(uid, `${action}.gif`, "image/gif", buf, action);
+        verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `sendAnimation: ${action}.gif`);
+        try { await ctx.bot.api.sendAnimation(chatId, new InputFile(buf, `${action}.gif`), { caption: `${action} (saved for 48h)` }); } catch {}
+        return { summary: JSON.stringify({ type: "animation", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
+      }
       if (ct.startsWith("image/")) {
         const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
         const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
