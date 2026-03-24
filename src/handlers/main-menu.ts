@@ -175,7 +175,8 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       const total = result?.total || agents.length;
       let msg = `<b>🤝 Agents</b> (${total} total)\n\n`;
       if (agents.length === 0) {
-        msg += `<i>No agents found${page > 0 ? " on this page" : ""}.</i>\n`;
+        const diag = result?.message || `No agents found${page > 0 ? " on this page" : ""}.`;
+        msg += `<i>${escapeHtml(diag)}</i>\n`;
         msg += `Type "register agent my-bot" to create one.`;
       } else {
         for (const a of agents) {
@@ -266,7 +267,10 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
         try { const or = (await userAgent.runAction("get_offers", { intentIndex: i.intentIndex })) as any; offerCount = or?.offers?.length || 0; } catch {}
         msg += `#${i.intentIndex} <b>${escapeHtml(svc)}</b> — ${i.budget ? formatTon(i.budget) : "?"} TON — ${offerCount} offers\n`;
       }
-      if (myIntents.length === 0) msg += `<i>No active intents. Tap "New Intent" to start.</i>\n`;
+      if (myIntents.length === 0) {
+        const diag = allIntents?.message || "No active intents. Tap \"New Intent\" to start.";
+        msg += `<i>${escapeHtml(diag)}</i>\n`;
+      }
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: intentsMenuKb(myIntents) });
     } catch (err: any) {
       await ctx.editMessageText(`⚠️ ${escapeHtml(err.message.slice(0, 200))}`, { parse_mode: "HTML", reply_markup: mainMenuKb() });
@@ -290,7 +294,10 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
         const svc = i.serviceName || i.service || "?";
         msg += `#${i.intentIndex} <b>${escapeHtml(svc)}</b> — ${i.budget ? formatTon(i.budget) : "?"} TON\n`;
       }
-      if (myIntents.length === 0) msg += `<i>No active intents.</i>\n`;
+      if (myIntents.length === 0) {
+        const diag = allIntents?.message || "No active intents.";
+        msg += `<i>${escapeHtml(diag)}</i>\n`;
+      }
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: intentsMenuKb(myIntents) });
     } catch (err: any) {
       await ctx.editMessageText(`⚠️ ${escapeHtml(err.message.slice(0, 200))}`, { parse_mode: "HTML", reply_markup: mainMenuKb() });
@@ -305,12 +312,15 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
       const userAgent = await getUserAgent(botCtx, ctx.from!.id);
       const intents = (await userAgent.runAction("discover_intents", {})) as any;
       const list = intents?.intents || [];
-      let msg = `<b>🔍 Open Intents</b> (${intents?.total || list.length} active)\n\n`;
+      let msg = `<b>🔍 Open Intents</b> (${list.length} open${intents?.total ? ` / ${intents.total} total` : ""})\n\n`;
       for (const i of list.slice(0, 5)) {
         const svc = i.serviceName || i.service || i.serviceHash?.slice(0, 12) || "?";
         msg += `<b>#${i.intentIndex} ${escapeHtml(svc)}</b>\n├ 💰 ${i.budget ? formatTon(i.budget) : "?"} TON\n└ 👤 <code>${escapeHtml(friendlyAddr(i.buyer || "", NETWORK === "testnet"))}</code>\n\n`;
       }
-      if (list.length === 0) msg += `<i>No open intents right now.</i>`;
+      if (list.length === 0) {
+        const diag = intents?.message || "No open intents right now.";
+        msg += `<i>${escapeHtml(diag)}</i>`;
+      }
       await ctx.editMessageText(msg, { parse_mode: "HTML", reply_markup: browseIntentsKb(list, 0) });
     } catch (err: any) {
       await ctx.editMessageText(`⚠️ ${escapeHtml(err.message.slice(0, 200))}`, { parse_mode: "HTML", reply_markup: mainMenuKb() });

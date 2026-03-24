@@ -7,6 +7,15 @@ import type { BotContext } from "../context";
 import { NETWORK } from "../config";
 import { getUserAgent } from "./agent";
 
+// Detect if an action result contains binary data that should be served natively
+function isBinaryActionResult(data: any): data is { contentType: string; data: Buffer | Uint8Array } {
+  if (!data || typeof data !== "object") return false;
+  const ct = data.contentType;
+  if (typeof ct !== "string") return false;
+  if (!(Buffer.isBuffer(data.data) || data.data instanceof Uint8Array)) return false;
+  return /^(image|audio|video)\//i.test(ct) || ct === "application/pdf" || ct === "application/octet-stream";
+}
+
 export function setupX402Server(ctx: BotContext): ReturnType<ReturnType<typeof express>["listen"]> {
   const app = express();
   const replayStore = new FileReplayStore("data/.x402-bot-hashes.json");
@@ -57,7 +66,12 @@ export function setupX402Server(ctx: BotContext): ReturnType<ReturnType<typeof e
       try {
         const userAgent = await getUserAgent(ctx, uid);
         const data = await userAgent.runAction(config.action, config.params);
-        res.json({ service, data, provider: uid, timestamp: new Date().toISOString() });
+        if (isBinaryActionResult(data)) {
+          res.setHeader("Content-Type", data.contentType);
+          res.send(Buffer.isBuffer(data.data) ? data.data : Buffer.from(data.data));
+        } else {
+          res.json({ service, data, provider: uid, timestamp: new Date().toISOString() });
+        }
       } catch (err: any) { res.status(500).json({ error: err.message }); }
     });
   });
@@ -73,7 +87,12 @@ export function setupX402Server(ctx: BotContext): ReturnType<ReturnType<typeof e
         for (const [k, v] of Object.entries(req.query)) { if (typeof v === "string" && v.length > 0) merged[k] = v; }
         const data = await ctx.readOnlyAgent.runAction(route.dataAction, merged);
         route.served++;
-        res.json({ source: "telegram-bot", fetchedAt: new Date().toISOString(), ...data });
+        if (isBinaryActionResult(data)) {
+          res.setHeader("Content-Type", data.contentType);
+          res.send(Buffer.isBuffer(data.data) ? data.data : Buffer.from(data.data));
+        } else {
+          res.json({ source: "telegram-bot", fetchedAt: new Date().toISOString(), ...data });
+        }
       } catch (err: any) { res.status(500).json({ error: err.message }); }
     });
   });

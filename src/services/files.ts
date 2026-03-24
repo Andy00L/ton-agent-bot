@@ -69,7 +69,7 @@ export async function handleActionResult(
     // result.data.contentType is the REAL resource type (not the error response type).
     const dataCt = (result?.data?.contentType as string | undefined)?.split(";")[0]?.trim();
     const dataBuf = dataCt ? toBuffer(result.data) : null;
-    if (dataBuf && dataBuf.length > 0 && dataCt) {
+    if (dataBuf && dataBuf.length > 0 && dataCt && /^(image|audio|video)\//i.test(dataCt)) {
       return await sendMedia(ctx, uid, chatId, action, dataCt, dataBuf);
     }
 
@@ -79,6 +79,21 @@ export async function handleActionResult(
       const buf = toBuffer(result.content);
       if (buf && buf.length > 0 && (ct.startsWith("image/") || ct.startsWith("audio/") || ct === "application/pdf" || ct === "application/octet-stream")) {
         return await sendMedia(ctx, uid, chatId, action, ct, buf);
+      }
+    }
+
+    // Priority 3: JSON-wrapped binary from x402 servers that use res.json()
+    // The response may be { service: "...", data: { contentType: "image/png", data: {...} } }
+    // or spread: { source: "...", contentType: "image/png", data: {...} }
+    if (result.verified === true && result.data && typeof result.data === "object") {
+      // Check nested: result.data.data may have contentType
+      const nested = result.data.data;
+      if (nested && typeof nested === "object" && typeof nested.contentType === "string") {
+        const nCt = nested.contentType.split(";")[0].trim();
+        const nBuf = toBuffer(nested);
+        if (nBuf && nBuf.length > 0 && /^(image|audio|video)\//i.test(nCt)) {
+          return await sendMedia(ctx, uid, chatId, action, nCt, nBuf);
+        }
       }
     }
 
