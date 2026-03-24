@@ -9,7 +9,7 @@
     "@ton-agent-kit/plugin-dns": "^1.0.3",
     "@ton-agent-kit/plugin-endpoints": "^1.0.1",
     "@ton-agent-kit/plugin-escrow": "^1.5.2",
-    "@ton-agent-kit/plugin-identity": "^1.6.6",
+    "@ton-agent-kit/plugin-identity": "^1.6.7",
     "@ton-agent-kit/plugin-nft": "^1.0.3",
     "@ton-agent-kit/plugin-payments": "1.0.18",
     "@ton-agent-kit/plugin-staking": "^1.0.3",
