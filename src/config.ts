@@ -14,7 +14,7 @@ export const getEnv = (key: string) =>
     .trim() || "";
 
 // Only override process.env when .env has a value (preserves Docker/CI env vars)
-for (const k of ["TON_MNEMONIC", "TELEGRAM_BOT_TOKEN", "OPENAI_API_KEY", "OPENAI_BASE_URL", "AI_MODEL", "TON_NETWORK", "TON_RPC_URL"]) {
+for (const k of ["TON_MNEMONIC", "TELEGRAM_BOT_TOKEN", "OPENAI_API_KEY", "OPENAI_BASE_URL", "AI_MODEL", "TON_NETWORK", "TON_RPC_URL", "TONAPI_KEY"]) {
   const v = getEnv(k);
   if (v) process.env[k] = v;
 }
@@ -35,19 +35,21 @@ export const HITL_ACTIONS = new Set([
   "broadcast_intent", "join_dispute", "seller_stake_escrow",
   "settle_deal", "confirm_delivery", "send_offer",
   "vote_release", "vote_refund", "claim_reward", "cancel_intent",
-  "register_agent", "deploy_jetton",  // FIX #1: added for HITL coverage
+  "register_agent", "deploy_jetton",
+  "pay_for_resource",          // sends TON via x402 — amount from 402 response
 ]);
 export const ALWAYS_CONFIRM = new Set([
   "vote_release", "vote_refund", "confirm_delivery",
   "settle_deal", "send_offer", "cancel_intent",
   "open_dispute", "join_dispute",
-  "register_agent",          // FIX #1: no amount field
-  "broadcast_intent",        // FIX #1: budget is a string, not amount
-  "accept_offer",            // FIX #1: engages a deal, no amount
-  "deploy_jetton",           // FIX #1: deploys a contract
-  "create_escrow",           // FIX #1: deploys an escrow contract
-  "deposit_to_escrow",       // FIX #1: amount in custom field
-  "seller_stake_escrow",     // FIX #1: stake, not amount
+  "register_agent",          // no amount field
+  "broadcast_intent",        // budget is a string, not amount
+  "accept_offer",            // engages a deal, no amount
+  "deploy_jetton",           // deploys a contract
+  "create_escrow",           // deploys an escrow contract
+  "deposit_to_escrow",       // amount in custom field
+  "seller_stake_escrow",     // stake, not amount
+  "pay_for_resource",        // amount determined by 402 response, not in LLM params
 ]);
 
 export const READ_ONLY_ACTIONS = new Set([

@@ -15,7 +15,7 @@
     "@ton-agent-kit/plugin-staking": "^1.0.3",
     "@ton-agent-kit/plugin-token": "^1.1.1",
     "@ton-agent-kit/wallet-store": "^1.0.1",
-    "@ton-agent-kit/x402-middleware": "1.1.6",
+    "@ton-agent-kit/x402-middleware": "1.1.7",
     "@ton/core": "^0.63.1",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^16.2.2",
