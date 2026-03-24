@@ -69,7 +69,7 @@ export async function executeLLMLoop(
           const stored = await handleActionResult(ctx, uid, chatId, fn, ar);
           result = stored.summary;
           // pay_for_resource receipt
-          if (fn === "pay_for_resource" && stored.fileId) {
+          if (fn === "pay_for_resource" && stored.fileId && (ar as any).verified === true) {
             verboseLog(`BOT:${uid}`, "DIRECT_REPLY", `pay_for_resource receipt for ${fp.url || "service"}`);
             try { await ctx.bot.api.sendMessage(chatId, `<b>Paid</b> for ${escapeHtml(fp.url || "service")}\nFile saved (48h): ${stored.fileId}\nView in Files`, { parse_mode: "HTML" }); } catch {}
           }
