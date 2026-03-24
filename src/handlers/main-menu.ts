@@ -512,21 +512,34 @@ export function registerMainMenuHandlers(botCtx: BotContext) {
         { parse_mode: "HTML" },
       );
 
-      // Step 2: Find the offer's endpoint URL from on-chain data
-      // We need to look up which intent this offer belongs to and get the endpoint
+      // Step 2: Find the offer's endpoint URL
+      // Search user's active intents first (fast), then scan all recent intents
       let endpoint: string | null = null;
       let sellerAddr: string | null = null;
       try {
-        // Search recent intents for this offer
-        const myAddr = botCtx.secretStore.getWalletAddress(uid) || botCtx.devAddress;
-        const allIntents = (await userAgent.runAction("discover_intents", {})) as any;
-        for (const intent of (allIntents?.intents || [])) {
-          const offers = (await userAgent.runAction("get_offers", { intentIndex: intent.intentIndex })) as any;
+        const state = getState(uid);
+        // Method 1: Check user's tracked active intents
+        const intentIndexes = [...state.myActiveIntents.keys()];
+        for (const intentIdx of intentIndexes) {
+          const offers = (await userAgent.runAction("get_offers", { intentIndex: intentIdx })) as any;
           const match = (offers?.offers || []).find((o: any) => o.offerIndex === offerIdx);
           if (match) {
             endpoint = match.endpoint || null;
             sellerAddr = match.seller || null;
             break;
+          }
+        }
+        // Method 2: If not found, scan recent intents (including accepted ones)
+        if (!endpoint) {
+          const allIntents = (await userAgent.runAction("discover_intents", {})) as any;
+          for (const intent of (allIntents?.intents || [])) {
+            const offers = (await userAgent.runAction("get_offers", { intentIndex: intent.intentIndex })) as any;
+            const match = (offers?.offers || []).find((o: any) => o.offerIndex === offerIdx);
+            if (match) {
+              endpoint = match.endpoint || null;
+              sellerAddr = match.seller || null;
+              break;
+            }
           }
         }
       } catch {}
