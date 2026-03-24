@@ -10,6 +10,30 @@ export async function handleActionResult(
   if (result === null || result === undefined) return { summary: "null", fileId: null };
   if (result?.error) return { summary: JSON.stringify(result), fileId: null };
 
+  // x402 paid content with raw buffer
+  if (action === "pay_for_resource" && result?.content && result?.contentType) {
+    const ct: string = result.contentType;
+    const buf = Buffer.isBuffer(result.content) ? result.content : Buffer.from(result.content);
+
+    if (ct.startsWith("image/gif") || ct === "image/gif") {
+      const fileId = ctx.fileStore.save(uid, `${action}.gif`, "image/gif", buf, action);
+      try { await ctx.bot.api.sendAnimation(chatId, new InputFile(buf, `${action}.gif`), { caption: `${action} (saved for 48h)` }); } catch {}
+      return { summary: JSON.stringify({ type: "animation", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
+    }
+    if (ct.startsWith("image/")) {
+      const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+      const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
+      try { await ctx.bot.api.sendPhoto(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved for 48h)` }); } catch {}
+      return { summary: JSON.stringify({ type: "image", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
+    }
+    if (ct.startsWith("audio/")) {
+      const ext = ct.includes("ogg") ? "ogg" : ct.includes("wav") ? "wav" : "mp3";
+      const fileId = ctx.fileStore.save(uid, `${action}.${ext}`, ct, buf, action);
+      try { await ctx.bot.api.sendAudio(chatId, new InputFile(buf, `${action}.${ext}`), { caption: `${action} (saved for 48h)` }); } catch {}
+      return { summary: JSON.stringify({ type: "audio", fileId, size: `${(buf.length / 1024).toFixed(1)} KB`, sent: true }), fileId };
+    }
+  }
+
   // Binary response with content-type (e.g. from pay_for_resource)
   if (result?.contentType && result?.data) {
     const ct = result.contentType as string;

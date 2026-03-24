@@ -11,7 +11,7 @@
     "@ton-agent-kit/plugin-escrow": "^1.5.2",
     "@ton-agent-kit/plugin-identity": "^1.6.4",
     "@ton-agent-kit/plugin-nft": "^1.0.3",
-    "@ton-agent-kit/plugin-payments": "^1.0.4",
+    "@ton-agent-kit/plugin-payments": "1.0.6",
     "@ton-agent-kit/plugin-staking": "^1.0.3",
     "@ton-agent-kit/plugin-token": "^1.1.1",
     "@ton-agent-kit/wallet-store": "^1.0.1",
