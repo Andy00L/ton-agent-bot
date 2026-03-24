@@ -63,6 +63,9 @@ export async function executeLLMLoop(
           }
           await ctx.bot.api.sendChatAction(chatId, "typing");
           const ar = await userAgent.runAction(fn, fp);
+          if (fn === "pay_for_resource") {
+            (ar as any).url = fp.url;
+          }
           const stored = await handleActionResult(ctx, uid, chatId, fn, ar);
           result = stored.summary;
           // pay_for_resource receipt
