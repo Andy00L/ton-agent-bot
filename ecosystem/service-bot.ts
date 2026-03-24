@@ -28,7 +28,11 @@ const NETWORK: "testnet" | "mainnet" = "testnet";
 const RPC_URL = "https://testnet-v4.tonhubapi.com";
 const X402_PORT = 4001;
 const AGENT_NAME = "media-service";
-const CAPABILITIES = ["image_delivery", "audio_delivery", "gif_delivery"];
+const CAPABILITIES = [
+  "image_delivery", "audio_delivery", "gif_delivery",
+  "image", "image_generation", "audio", "audio_generation",
+  "gif", "animation", "gift", "nft", "media", "video",
+];
 const POLL_INTERVAL = 10_000;
 const OFFER_PRICE = "0.05";
 

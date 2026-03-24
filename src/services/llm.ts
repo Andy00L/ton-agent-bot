@@ -172,7 +172,7 @@ export async function handleAutoMode(ctx: BotContext, gramCtx: any, state: UserS
     const userAddr = rawAddr ? friendlyAddr(rawAddr, NETWORK === "testnet") : ctx.devFriendlyAddr;
     const sysPrompt = makeSystemPrompt(ctx, uid, userAddr);
     const missionHistory: OpenAI.ChatCompletionMessageParam[] = [
-      { role: "system", content: sysPrompt + "\n\nMISSION MODE: Execute the following mission autonomously. Be decisive — do NOT stop to ask for confirmation. If discover_agent returns no results, IMMEDIATELY try broader keywords, then broadcast_intent. If broadcast_intent succeeds, call get_offers to check for responses. Execute the FULL workflow end-to-end. Do NOT give up after 1 step." },
+      { role: "system", content: sysPrompt + "\n\nMISSION MODE: Execute the following mission autonomously. Be decisive — do NOT stop to ask for confirmation.\n- If discover_agent returns no results, IMMEDIATELY try broader keywords, then broadcast_intent.\n- After broadcast_intent, ALWAYS call get_offers to check for responses.\n- If get_offers returns offers, IMMEDIATELY call accept_offer on the best one, then pay_for_resource with the offer's endpoint URL.\n- Execute the FULL purchase workflow end-to-end: discover → broadcast → get_offers → accept_offer → pay_for_resource.\n- Do NOT stop after discovery or broadcasting. Complete the purchase.\n- Do NOT give up after 1 step. Use ALL available steps." },
       { role: "user", content: goal },
     ];
     let stepCount = 0;
