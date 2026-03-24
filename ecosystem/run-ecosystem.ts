@@ -2,6 +2,7 @@
 // Launches all ecosystem bots in parallel with staggered starts
 
 import { log, logError, sleep } from "./logger";
+import { selectNetworkMode } from "@ton-agent-kit/network-mode";
 
 async function main() {
   log("ECOSYSTEM", "INIT", "═══════════════════════════════════════");
@@ -13,9 +14,14 @@ async function main() {
 
   const procs: ReturnType<typeof Bun.spawn>[] = [];
 
-  const ip = await fetch('https://api.ipify.org').then(r => r.text());
-  const serviceUrl = `http://${ip}:4001`;
-  log("ECOSYSTEM", "NETWORK", `Public URL: ${serviceUrl}`);
+  // Network mode — env var bypass for scripts, otherwise interactive prompt
+  let serviceUrl: string;
+  if (process.env.SERVICE_URL) {
+    serviceUrl = process.env.SERVICE_URL;
+  } else {
+    serviceUrl = await selectNetworkMode(4001);
+  }
+  log("ECOSYSTEM", "NETWORK", `Network: ${serviceUrl}`);
 
   log("ECOSYSTEM", "LAUNCH", "Starting service-bot...");
   procs.push(
