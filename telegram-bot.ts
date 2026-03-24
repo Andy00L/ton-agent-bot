@@ -107,6 +107,7 @@ async function main() {
     secretStore,
     fileStore,
     readOnlyAgent,
+    endpointPlugin: EndpointPlugin,
     chatHistories: new Map<number, OpenAI.ChatCompletionMessageParam[]>(),
     userAgents: new Map(),
     userOpenAIClients: new Map(),

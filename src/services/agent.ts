@@ -24,7 +24,8 @@ export async function getUserAgent(ctx: BotContext, uid: number): Promise<TonAge
   const userAgent = new TonAgentKit(wallet, RPC_URL, {}, NETWORK)
     .use(TokenPlugin).use(DefiPlugin).use(DnsPlugin).use(NftPlugin)
     .use(StakingPlugin).use(EscrowPlugin).use(IdentityPlugin)
-    .use(AnalyticsPlugin).use(PaymentsPlugin).use(AgentCommPlugin);
+    .use(AnalyticsPlugin).use(PaymentsPlugin).use(AgentCommPlugin)
+    .use(ctx.endpointPlugin);
   ctx.userAgents.set(uid, userAgent);
   return userAgent;
 }
