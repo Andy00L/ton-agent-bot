@@ -3,6 +3,20 @@ import type { BotContext } from "../context";
 import { MAX_FILE_SIZE } from "@ton-agent-kit/wallet-store";
 import { verboseLog } from "../helpers";
 
+// ── Convert any Buffer-like value to a native Buffer ──
+function toBuffer(val: any): Buffer | null {
+  if (!val) return null;
+  if (Buffer.isBuffer(val)) return val;
+  if (val instanceof Uint8Array) return Buffer.from(val);
+  // JSON-serialized Buffer: { type: "Buffer", data: [72, 101, ...] }
+  if (val.type === "Buffer" && Array.isArray(val.data)) return Buffer.from(val.data);
+  // Array of bytes
+  if (Array.isArray(val)) return Buffer.from(val);
+  // Structured object from pay_for_resource: { contentType: "...", data: <Buffer> }
+  if (typeof val === "object" && val.data && val.data !== val) return toBuffer(val.data);
+  return null;
+}
+
 // ── File handling for action results ──
 export async function handleActionResult(
   ctx: BotContext, uid: number, chatId: number, action: string, result: any,
@@ -49,9 +63,12 @@ export async function handleActionResult(
   }
 
   // Binary response with content-type (e.g. from pay_for_resource)
-  if (result?.contentType && result?.data) {
+  if (result?.contentType && (result?.content || result?.data)) {
     const ct = result.contentType as string;
-    const buf = Buffer.isBuffer(result.data) ? result.data : Buffer.from(result.data);
+    const buf = toBuffer(result.content) || toBuffer(result.data);
+    if (!buf) {
+      return { summary: JSON.stringify(result), fileId: null };
+    }
     if (buf.length > MAX_FILE_SIZE) {
       return { summary: JSON.stringify({ error: `Response too large (${(buf.length / 1024 / 1024).toFixed(1)} MB). Max 10 MB.` }), fileId: null };
     }

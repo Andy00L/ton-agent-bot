@@ -1,7 +1,7 @@
 import express from "express";
 import {
   tonPaywall,
-  MemoryReplayStore,
+  FileReplayStore,
 } from "@ton-agent-kit/x402-middleware";
 import type { BotContext } from "../context";
 import { NETWORK } from "../config";
@@ -9,10 +9,10 @@ import { getUserAgent } from "./agent";
 
 export function setupX402Server(ctx: BotContext): ReturnType<ReturnType<typeof express>["listen"]> {
   const app = express();
-  const replayStore = new MemoryReplayStore();
-  const userReplayStores = new Map<number, MemoryReplayStore>();
-  function getReplayStore(uid: number): MemoryReplayStore {
-    if (!userReplayStores.has(uid)) userReplayStores.set(uid, new MemoryReplayStore());
+  const replayStore = new FileReplayStore("data/.x402-bot-hashes.json");
+  const userReplayStores = new Map<number, FileReplayStore>();
+  function getReplayStore(uid: number): FileReplayStore {
+    if (!userReplayStores.has(uid)) userReplayStores.set(uid, new FileReplayStore(`data/.x402-user-${uid}-hashes.json`));
     return userReplayStores.get(uid)!;
   }
 

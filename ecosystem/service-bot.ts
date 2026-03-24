@@ -13,7 +13,7 @@ import EscrowPlugin from "@ton-agent-kit/plugin-escrow";
 import IdentityPlugin from "@ton-agent-kit/plugin-identity";
 import PaymentsPlugin from "@ton-agent-kit/plugin-payments";
 import TokenPlugin from "@ton-agent-kit/plugin-token";
-import { MemoryReplayStore, tonPaywall } from "@ton-agent-kit/x402-middleware";
+import { FileReplayStore, tonPaywall } from "@ton-agent-kit/x402-middleware";
 import { mnemonicNew } from "@ton/crypto";
 import express from "express";
 import { readFileSync } from "fs";
@@ -85,7 +85,7 @@ async function main() {
 
   // ══ x402 Express server ══
   const app = express();
-  const replayStore = new MemoryReplayStore();
+  const replayStore = new FileReplayStore(".x402-service-hashes.json");
 
   // Load assets
   const loadAsset = (path: string, label: string): Buffer => {
@@ -108,6 +108,7 @@ async function main() {
     recipient: walletAddr,
     network: NETWORK,
     replayStore,
+    tonapiKey: process.env.TONAPI_KEY,
   });
 
   app.get("/api/image", (req: any, res: any) => {
