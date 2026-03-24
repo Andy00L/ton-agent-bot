@@ -2,7 +2,7 @@
 
 A multi-user Telegram bot that gives each user their own AI-powered TON blockchain agent. Users bring their own wallet and LLM API key. The bot operator runs the infrastructure, pays nothing for AI or gas.
 
-Built on [TON Agent Kit](https://github.com/Andy00L/ton-agent-kit) -- 15 npm packages, 11 plugins, 75+ actions.
+Built on [TON Agent Kit](https://github.com/Andy00L/ton-agent-kit). 21 npm packages, 12 plugins, 75 actions.
 
 ## Quick Start
 
@@ -180,17 +180,18 @@ src/
 
 | Package | Version | Purpose |
 |---|---|---|
-| `@ton-agent-kit/core` | ^1.2.2 | Base SDK, wallet, plugin system |
+| `@ton-agent-kit/core` | ^1.2.4 | Base SDK, wallet, plugin system |
 | `@ton-agent-kit/plugin-token` | ^1.1.1 | TON/Jetton transfers |
 | `@ton-agent-kit/plugin-defi` | ^1.2.2 | Swaps (DeDust, STONfi), prices, yield |
 | `@ton-agent-kit/plugin-dns` | ^1.0.3 | Domain resolution, lookup |
 | `@ton-agent-kit/plugin-nft` | ^1.0.3 | NFT info, collections |
 | `@ton-agent-kit/plugin-staking` | ^1.0.3 | Staking pools, stake/unstake |
 | `@ton-agent-kit/plugin-escrow` | ^1.5.2 | Escrow create/deposit/release/dispute |
-| `@ton-agent-kit/plugin-identity` | ^1.6.4 | Agent registration, reputation |
+| `@ton-agent-kit/plugin-identity` | ^1.6.8 | Agent registration, reputation, scan fallback |
 | `@ton-agent-kit/plugin-analytics` | ^1.1.1 | Portfolio metrics, equity curve |
-| `@ton-agent-kit/plugin-payments` | ^1.0.4 | Payment processing |
-| `@ton-agent-kit/plugin-agent-comm` | ^1.3.3 | Intents, offers, discovery |
+| `@ton-agent-kit/plugin-payments` | 1.0.18 | x402 payments, binary content, JSON-unwrap |
+| `@ton-agent-kit/plugin-agent-comm` | ^1.3.6 | Intents, offers, discovery, testnet retry |
+| `@ton-agent-kit/x402-middleware` | 1.1.10 | Express paywall, address normalization, fee tolerance |
 | `@ton-agent-kit/plugin-endpoints` | ^1.0.0 | x402 endpoint management |
 | `@ton-agent-kit/wallet-store` | ^1.0.0 | Encrypted SQLite storage, LLM providers |
 | `@ton-agent-kit/x402-middleware` | ^1.1.1 | Express middleware for TON payments |
